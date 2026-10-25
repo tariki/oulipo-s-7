@@ -1,0 +1,24 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: var(--space-3);
+  font-family: var(--font-body);
+  line-height: 1.7;
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+a {
+  color: var(--color-link);
+}
+
+/* フォーカスは2px以上の枠で見えるようにする */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: 2px;
+}

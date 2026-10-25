@@ -11,5 +11,25 @@
       "toolsToInstall": "uv"
     },
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+  "hostRequirements": {
+    "memory": "4gb"
+  },
+  "forwardPorts": [8000, 5173],
+  "portsAttributes": {
+    "8000": { "label": "API" },
+    "5173": { "label": "画面" }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-playwright.playwright",
+        "timonwong.shellcheck"
+      ]
+    }
   }
 }

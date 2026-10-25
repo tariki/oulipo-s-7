@@ -1,0 +1,87 @@
+# プルリクエストのCI。内容は docs/development-guidelines.md「手元で確かめることとCI」の
+# 「プルリクエスト」の列。手元の scripts/check.sh と同じコマンドを、失敗した箇所が分かるように
+# ステップに分けて実行する。PRタイトルの形式は pr-title.yml で確かめる
+# (タイトルを直すたびにここのジョブが走り直さないように分けている)。
+name: ci
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: server/uv.lock
+      - name: 依存関係を入れる
+        run: uv sync --locked
+      - name: ruff check
+        run: uv run ruff check
+      - name: ruff format --check
+        run: uv run ruff format --check
+      - name: mypy
+        run: uv run mypy
+      - name: lint-imports
+        run: uv run lint-imports
+      - name: pytest(カバレッジ 全体80%以上)
+        run: uv run pytest --cov --cov-report=term --cov-fail-under=80
+      - name: カバレッジ services/・s7builder/ それぞれ90%以上
+        run: |
+          uv run coverage report --include='src/s7/services/*' --fail-under=90
+          uv run coverage report --include='src/s7builder/*' --fail-under=90
+      - name: pip-audit(実行時の依存関係。既知の脆弱性が1つでもあれば失敗)
+        run: |
+          uv export --no-dev --no-emit-project --format requirements-txt --quiet \
+            | uv run pip-audit --strict -r /dev/stdin
+
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: 依存関係を入れる
+        run: npm ci
+      - name: lint
+        run: npm run lint
+      - name: format:check
+        run: npm run format:check
+      - name: typecheck
+        run: npm run typecheck
+      - name: test(カバレッジ80%以上)
+        run: npm run coverage
+      - name: build
+        run: npm run build
+      - name: npm audit(画面に含まれる依存関係。深刻度が高以上で失敗)
+        run: npm audit --omit=dev --audit-level=high
+
+  shellcheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: ShellCheck
+        run: shellcheck scripts/*.sh .devcontainer/*.sh
+

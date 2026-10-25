@@ -1400,7 +1400,7 @@ PC(幅768px以上)                       スマートフォン(幅768px未満)
 | 項目 | 型 | 内容 |
 |------|-----|------|
 | `time` | string | ISO 8601(UTC) |
-| `severity` | string | `INFO`、`WARNING`、`ERROR` |
+| `severity` | string | `INFO`、`WARNING`、`ERROR`(`S7_LOG_LEVEL=DEBUG` のときは `DEBUG` も) |
 | `kind` | string | `request`(APIの呼び出し)、`analytics`(画面のイベント)、`app`(それ以外) |
 | `message` | string | 人が読む説明。本文を含めない |
 

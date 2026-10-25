@@ -111,12 +111,13 @@ const charCount = text.length;
 | `ignore` | `RUF001`、`RUF002`、`RUF003` | 全角の句読点(`。！？（`)や長音を、まぎらわしい文字として報告するため |
 | `pydocstyle.convention` | `google` | docstringをGoogleスタイルにそろえる |
 | `ignore`(追加) | `D415` | 日本語のdocstringは「。」で終えるため(Googleスタイルの設定では `D400` は対象外) |
-| `per-file-ignores` | `tests/**`: `S101`(`assert`)、`D`、`PLR2004` | テストでは `assert` と具体的な値を使い、docstringは任意にする |
+| `ignore`(追加) | `D104` | `__init__.py` は空にする(`docs/repository-structure.md`)ため、パッケージのdocstringを求めない |
+| `per-file-ignores` | `tests/**`: `S101`(`assert`)、`D`、`PLR2004`、`TID251` | テストでは `assert` と具体的な値を使い、docstringは任意にする。ログの形式を確かめるため `logging` を直接使ってよい |
 | `per-file-ignores` | `src/s7/logging_config.py`: `TID251` | `logging` を使ってよい唯一の場所 |
 | `flake8-tidy-imports.banned-api` | `logging` | ログの経路を `logging_config.py` に限るため |
 | `mccabe.max-complexity` | 10 | 関数の分岐が多すぎないように |
 | `pylint.max-statements` | 30 | 下の「関数設計」の目安を機械的に見る |
-| `pylint.max-args` | `self` を除いて5個まで通る値 | 下の「関数設計」。`self` を数えるかは導入時に確かめて決める |
+| `pylint.max-args` | 5 | 下の「関数設計」。Ruffは `self` を数えないため、5で「`self` を除いて5個まで」になる(2026-10-25に確認) |
 
 - `scripts/*.py` と `tools/analysis/` は `server/` の外にあるため、上のツールの対象にならない。手で `uv run --directory server ruff check ../scripts ../tools/analysis` を実行して整える(mypyのstrictは求めない)
 
@@ -448,7 +449,7 @@ try {
 - 先頭は `#!/usr/bin/env bash` と `set -euo pipefail`
 - リポジトリ直下を `ROOT="$(cd "$(dirname "$0")/.." && pwd)"` で求め、パスはすべて `$ROOT` から組み立てる。どこから実行しても同じ動きにする
 - `uv run --directory server` の中ではパスの基準が `server/` になる。ファイルを渡すときは `"$ROOT/data/build/s7dict.sqlite"` のように絶対パスにする
-- ShellCheckの警告が無い状態にする(`scripts/check.sh` で実行する)
+- ShellCheckの警告が無い状態にする(`scripts/check.sh` で、`scripts/*.sh` と `.devcontainer/*.sh` に実行する)
 
 ## APIを変えるときの手順
 
@@ -500,7 +501,7 @@ main(常に動く状態。ホスティング先の決定後は、マージする
 | 設定 | 値 |
 |------|-----|
 | プルリクエストを必須にする | はい(直接のpushと強制pushは禁止) |
-| 必須のステータスチェック | `ci.yml` のすべてのジョブ |
+| 必須のステータスチェック | `ci.yml` と `pr-title.yml` のすべてのジョブ |
 | マージの方式 | squash mergeだけを許す |
 | 必要な承認の数 | 開発者が1人のうちは0(CIが通れば自分でマージしてよい)。2人以上になったら1 |
 | マージ前にブランチを最新にする | はい |
@@ -780,7 +781,7 @@ describe('countChars', () => {
 
 | 対象 | コマンド | 失敗させる条件 |
 |------|----------|----------------|
-| Python(実行時の依存関係) | `uv export --no-dev --format requirements-txt \| pip-audit -r -` | 既知の脆弱性が1つでもある(`pip-audit` は深刻度で絞れないため) |
+| Python(実行時の依存関係) | `uv export --no-dev --no-emit-project --format requirements-txt \| pip-audit --strict -r /dev/stdin`(`server/` で実行。`pip-audit` は `-r -` で標準入力を読めない) | 既知の脆弱性が1つでもある(`pip-audit` は深刻度で絞れないため) |
 | 画面(画面に含まれる依存関係) | `npm audit --omit=dev --audit-level=high` | 深刻度が高(high)以上 |
 
 - 修正版がまだ無い脆弱性は、影響を調べたうえで、`--ignore-vuln [ID]`(pip-audit)などで一時的に外してよい。外すときは `ci.yml` に理由と見直す日(30日以内)をコメントで書く
@@ -808,13 +809,12 @@ describe('countChars', () => {
 
 Dockerに割り当てるメモリは4GB以上にする(辞書のビルドで使う)。
 
-**Dev Containerの設定に足すもの**(実装の初回の作業。今の `devcontainer.json` はPython・uv・Node.jsだけを入れている):
-- `postCreateCommand`: 下の手順2を自動で実行する
+**Dev Containerの設定**(`.devcontainer/devcontainer.json`):
+- Python 3.13・uv・Node.js 24 を features で入れる
+- `postCreateCommand`: `.devcontainer/post-create.sh` を実行する。ShellCheckをaptで入れ、下の手順2を自動で行う
 - `forwardPorts`: `8000`(API)、`5173`(画面)
 - VS Codeの拡張機能: Ruff、ESLint、Prettier、Playwright、ShellCheck
 - `hostRequirements.memory`: `4gb`(足りなければ警告を出す)
-- ShellCheckのインストール
-- あわせて、`docs/repository-structure.md`「除外設定」の `.gitignore` の追加分を入れる(入れる前に依存関係を入れると、`.venv/` や `node_modules/` がコミットの対象に見えるため)
 
 ### セットアップ手順
 

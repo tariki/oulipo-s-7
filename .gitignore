@@ -26,3 +26,25 @@ Thumbs.db
 !.steering/.gitkeep
 
 .claude/settings.local.json
+
+# Python
+.venv/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node.js / 画面
+node_modules/
+web/dist/
+web/coverage/
+web/playwright-report/
+web/test-results/
+
+# 辞書データ(大きいため。build-report.jsonとsha256はGit管理する)
+data/source/*
+data/build/*
+!data/source/.gitkeep
+!data/build/.gitkeep
