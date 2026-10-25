@@ -1,0 +1,15 @@
+{
+  "name": "oulipo-s-7",
+  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+  "workspaceFolder": "/workspaces/oulipo-s-7",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.13",
+      "toolsToInstall": "uv"
+    },
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  }
+}
