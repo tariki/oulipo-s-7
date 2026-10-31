@@ -74,8 +74,10 @@ server/src/s7/
 │   │   ├── request_logging.py     # /api/v1/* の呼び出しごとに kind=request のログを1行出す(errorCode を含む)
 │   │   ├── body_size_limit.py     # 1MBを超える本文を413で断る
 │   │   ├── startup_gate.py        # 辞書の読み込み中は503を返す
+│   │   ├── internal_error.py      # 想定外の例外を500にする(自前のミドルウェアの最も内側)
 │   │   └── rate_limiter.py        # RateLimiter。回数はミドルウェア、文字数は依存関数(transform_char_limit)で判定する
 │   ├── static_files.py            # web/dist の配信。/ と /about は index.html を返す。/api/* は静的配信に回さない
+│   ├── openapi_description.py     # API仕様書(/api/docs)の全体の説明(入力の型、エラーコード、利用制限、互換性の方針)
 │   ├── error_handlers.py          # ErrorHandler(DomainError・検証エラーをエラーレスポンスに変換)
 │   └── dependencies.py            # ルーターに渡すサービスの取得と、文字数の利用制限(FastAPIのDepends)
 ├── services/                      # サービスレイヤー
@@ -99,6 +101,7 @@ server/src/s7/
 └── domain/                        # レイヤーをまたいで使う型(他に依存しない)
     ├── dictionary.py              # Lemma, Synset, SiblingGroup, Sense, DictionaryMeta
     ├── text.py                    # Morpheme(形態素。Tokenizerが返し、Nounが持つ)
+    ├── limits.py                  # 入力の上限と利用制限の値(APIのスキーマ、MetaService、RateLimiterで共有)
     ├── transform.py               # Mode, NounStatus, Noun, RawSegment, GojuonRoute, ConceptRoute, GojuonShift, ConceptShift,
     │                              # SenseChoice, ConceptShiftResult, NounResult, TransformResultMeta, TransformResult
     └── errors.py                  # DomainErrorとその派生
@@ -226,7 +229,7 @@ server/tests/
 │       ├── test_dictionary_writer.py  # 外部キーの検査、ファイルの権限
 │       └── test_quality_report.py # 置換率の計算(偽物のTokenizerと小さな辞書で)
 ├── integration/
-│   ├── api/                       # TestClientでAPIを呼ぶ
+│   ├── api/                       # TestClientでAPIを呼ぶ(conftest.py: small_repo と WordListTokenizer でサービスを組み立てる)
 │   │   ├── test_transform.py      # 正常系、入力の型の厳しさ、segments の連結で元の文章に戻ること
 │   │   ├── test_errors.py         # エラーコードの一覧
 │   │   ├── test_rate_limit.py     # 回数・文字数の429と Retry-After
@@ -235,7 +238,10 @@ server/tests/
 │   │   ├── test_body_size_limit.py  # 1MBを超える本文の413(Content-Length あり・chunked)。上限ちょうどの本文が通ること
 │   │   ├── test_static_files.py   # / と /about が index.html を返すこと、Cache-Control
 │   │   ├── test_logging_format.py # ログの各行の項目と型、本文を含まないこと
-│   │   └── test_determinism.py    # 同じ入力を2回送って同じ結果になること
+│   │   ├── test_determinism.py    # 同じ入力を2回送って同じ結果になること
+│   │   ├── test_senses_and_meta.py  # 語義の一覧、メタ情報、API仕様書の説明
+│   │   ├── test_events.py         # アクセス解析のイベントの検証とログ、起動中も受け付けること
+│   │   └── test_security_headers.py  # セキュリティヘッダー、Cache-Control、gzip
 │   ├── builder/
 │   │   ├── test_build_sample.py   # wnjpn_sample.sqlからビルドし、件数・並び順・兄弟グループと、2回ビルドの一致を確かめる
 │   │   └── test_main.py           # python -m s7builder の終了コード、報告のファイル、既定のパス
