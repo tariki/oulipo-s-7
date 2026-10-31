@@ -101,7 +101,7 @@ const charCount = text.length;
 |------|------|
 | 整形 | `ruff format`。行の長さ100、ダブルクォート。全角文字は幅2で数えるため、日本語のコメントは1行50文字程度で折り返す |
 | リント | `ruff check`。有効にするルール: `E, F, W, I, N, UP, B, SIM, RUF, PT, S, T20, TID, D, C90, PLR` |
-| 型チェック | `mypy --strict`(`src/` と `tests/`) |
+| 型チェック | `mypy --strict`(`src/` と `tests/`)。SudachiPyは型の定義(`.pyi`)を同梱するが `py.typed` が無いため、SudachiPyに限り `follow_untyped_imports`・`implicit_reexport` を有効にして読ませる |
 | 依存関係の検査 | import-linter(`lint-imports`。上の「5. 依存の向きを守る」) |
 
 **Ruffの細かい設定**:
@@ -112,7 +112,7 @@ const charCount = text.length;
 | `pydocstyle.convention` | `google` | docstringをGoogleスタイルにそろえる |
 | `ignore`(追加) | `D415` | 日本語のdocstringは「。」で終えるため(Googleスタイルの設定では `D400` は対象外) |
 | `ignore`(追加) | `D104` | `__init__.py` は空にする(`docs/repository-structure.md`)ため、パッケージのdocstringを求めない |
-| `per-file-ignores` | `tests/**`: `S101`(`assert`)、`D`、`PLR2004`、`TID251` | テストでは `assert` と具体的な値を使い、docstringは任意にする。ログの形式を確かめるため `logging` を直接使ってよい |
+| `per-file-ignores` | `tests/**`: `S101`(`assert`)、`D`、`PLR2004`、`TID251`、`S311` | テストでは `assert` と具体的な値を使い、docstringは任意にする。ログの形式を確かめるため `logging` を直接使ってよい。性質テストはシードを固定した `random` で入力を作る |
 | `per-file-ignores` | `src/s7/logging_config.py`: `TID251` | `logging` を使ってよい唯一の場所 |
 | `flake8-tidy-imports.banned-api` | `logging` | ログの経路を `logging_config.py` に限るため |
 | `mccabe.max-complexity` | 10 | 関数の分岐が多すぎないように |
