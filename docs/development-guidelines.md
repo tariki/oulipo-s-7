@@ -253,10 +253,10 @@ class LemmaNotFoundError(DomainError):
     code = "LEMMA_NOT_FOUND"
 
 class DictionaryIntegrityError(Exception):
-    """変換用辞書の不備。ビルド時の検査で防ぐため、実行時に起きたら500にする。"""
-    def __init__(self, synset_id: str) -> None:
-        super().__init__(f"概念 {synset_id} が変換用辞書にありません")  # 識別子だけを入れる
-        self.synset_id = synset_id
+    """変換用辞書の不備。読み込み時の検査で防ぐため、実行時に起きたら500にする。"""
+    def __init__(self, identifier: str, kind: str = "概念") -> None:
+        super().__init__(f"{kind} {identifier} が変換用辞書にありません")  # 識別子だけを入れる
+        self.identifier = identifier
 ```
 
 ```python
@@ -308,7 +308,7 @@ def merge_longest(run: list[Morpheme], repo: DictionaryRepository) -> list[Noun]
 
 - 実行時にSQLiteを引かない。`DictionaryRepository` が起動時にすべて `dict`・`list` へ展開する
 - 1語あたりの処理で、リストの線形探索(`list.index`、`in list`)をしない。索引(`dict`)を引く
-- Sudachiの辞書は起動時に1回だけ読み込む。変換は同時に2つまでスレッドで動く(architecture.md「同期処理と非同期処理」)ため、Sudachiの `Tokenizer` を複数のスレッドで共有してよいかを実装の初回に確かめる。共有できなければ、スレッドごとに作る(`threading.local`)。決めたら `SudachiTokenizer` のdocstringとarchitecture.mdに書く
+- Sudachiの辞書は起動時に1回だけ読み込む。変換は同時に2つまでスレッドで動く(architecture.md「同期処理と非同期処理」)。SudachiPyの `Tokenizer` は同時に使うと例外になるため、`SudachiTokenizer` が `Tokenizer` をスレッドごとに作る(`threading.local`。辞書は共有)
 - 性能に効く変更は、`tests/performance/` の結果をプルリクエストに書く
 
 ### ファイルの大きさ
@@ -698,7 +698,7 @@ def test_shift_single_sibling_climbs_to_parent(small_repo: DictionaryRepository)
 
     # Then: 1段上がってから置き換わる(状態 climbed の判定は TransformService のテストで見る)
     assert result.shift is not None
-    assert [step.to.id for step in result.shift.climbs] == ["90000002-n"]
+    assert [step.to.synset_id for step in result.shift.route.climbs] == ["90000002-n"]
 ```
 
 - 照合規則のように入力と期待値の組が多いものは `pytest.mark.parametrize` で表にする。照合規則は、機能設計書「比較の例」の表の**すべての行**をそのまま並べる(下は書き方の例)

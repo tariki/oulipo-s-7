@@ -83,7 +83,7 @@ server/src/s7/
 │   ├── noun_extractor.py          # NounExtractor(品詞の判定、最長一致、見出し語の引き当て)
 │   ├── text_chunker.py            # 長文をSudachiに渡せる長さ(40,000バイト以下)に分ける関数
 │   ├── formal_nouns.py            # 形式名詞の除外リスト(唯一の正)
-│   ├── shifter.py                 # Shifterの共通インターフェース(Protocol)
+│   ├── shifter.py                 # 2つのShifterで共有するN個先の計算(shift_index)
 │   ├── gojuon_shifter.py          # GojuonShifter
 │   ├── concept_shifter.py         # ConceptShifter
 │   ├── sense_selector.py          # SenseSelector
@@ -198,6 +198,7 @@ server/tests/
 ├── fixtures/
 │   ├── wnjpn_sample.sql           # 数十語の日本語WordNetのサンプル(SQL文。差分を読めるようにテキストで持つ)
 │   ├── sample_wordnet.py          # wnjpn_sample.sql からSQLiteを作る関数と、それに合わせた読み・除外リスト
+│   ├── lexicon.py                 # 表記の一覧から見出し語だけの辞書を作る(名詞抽出のテスト用)
 │   └── fake_tokenizer.py          # 決まった形態素を返すTokenizer
 ├── unit/                          # src/と同じ構造
 │   ├── s7/
@@ -617,7 +618,7 @@ pages/ ─┬─→ hooks/ ──────┬──→ api/(ApiClient)
 
 | 追加するもの | 配置方針 |
 |--------------|----------|
-| 概念版の派生ルール(PRDのP2) | `services/` に `[名前]_shifter.py` を追加し、`shifter.py` のインターフェースを実装する。ファイルが10個を超えたら `services/shifters/` にまとめる |
+| 概念版の派生ルール(PRDのP2) | `services/` に `[名前]_shifter.py` を追加し、`shifter.py` の `shift_index` を使う。Shifterが3つ以上になり呼び出し方をそろえる必要が出たら、`shifter.py` に共通のインターフェース(Protocol)を置く。ファイルが10個を超えたら `services/shifters/` にまとめる |
 | 他の品詞(V+7など、P2) | 活用の処理は `services/inflection/` を新設する。品詞の判定は `noun_extractor.py` の設定で切り替える |
 | 結果の共有URL(P2) | 画面のみの変更。`web/src/share/` を新設する |
 | APIのv2 | `api/routers/v2/`、`api/schemas/v2/` を作る。v1のファイルは移動しない |

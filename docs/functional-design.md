@@ -5,6 +5,7 @@
 > 2026-10-24: 機能設計書のレビュー(3.5/5)の指摘を反映。あわせて、読みが決まらない見出し語も概念版では置き換えに使うように変更した。
 > 2026-10-25: 用語集・開発ガイドラインのレビューに合わせ、`INVALID_REQUEST` の条件と画面遷移図(確認中からの自動変換、20秒の数え始め)を補った。
 > 2026-10-25: リポジトリ構造定義書のレビューに合わせ、`Morpheme` の置き場所、ミドルウェアの処理順(セキュリティヘッダー・gzip・リクエストログ)、画面のフックと部品、標準の文章の置き場所(`data/standard-texts/`)を更新した。
+> 2026-10-31: 変換の処理の実装に合わせ、中間の型(置換経路、`ConceptRef`、`ConceptShift`、`SenseChoice`)、`ConceptShifter.select_sense`、`TransformService` のコンストラクタ、`DictionaryRepository` の読み込みと整合性の検査を追記した。
 > 2026-10-31: 辞書ビルダーの実装に合わせ、`Morpheme`(`reading_form`・`is_oov`)と `Tokenizer` の分割モード、`built_at` の値、定義文のつなぎ方、読みの決定(記号の仮の読み「キゴウ」を使わない、検査の範囲)、読みの付与率(97.5%)を更新した。
 
 ## システム構成図
@@ -495,6 +496,8 @@ def get_meta() -> MetaResponse: ...
 
 ```python
 class TransformService:
+    def __init__(self, extractor: NounExtractor, gojuon: GojuonShifter, concept: ConceptShifter,
+                 dictionary_version: str, max_concurrency: int = 2) -> None: ...
     def transform(self, text: str, mode: Mode, n: int,
                   exclusions: frozenset[int] = frozenset(),
                   sense_overrides: Mapping[int, str] | None = None) -> TransformResult: ...
@@ -533,6 +536,8 @@ class GojuonShifter:
 class ConceptShifter:
     def shift(self, lemma_id: int, n: int,
               synset_override: str | None = None) -> ConceptShiftResult: ...
+    def select_sense(self, lemma_id: int,
+                     synset_override: str | None = None) -> SenseChoice: ...  # 除外した名詞の語義を示すため
 ```
 
 #### SenseSelector
@@ -563,9 +568,12 @@ class SenseSelector:
 **責務**:
 - 起動時に変換用辞書(SQLite)を一度だけ読み込み、メモリ上の辞書(dict)に展開する
 - 実行時の検索はすべてメモリ上で行う(1回あたりO(1))
+- 読み込み時に整合性を検査し、不備があれば `DictionaryIntegrityError` で起動を止める(上位語・兄弟グループのメンバー・代表語・語義の参照先があること、見出し語の `id` が0からの連番で読みのある語が先に並ぶこと、すべての見出し語に語義があること、メタ情報の項目がそろっていること)。ファイルが無ければ `FileNotFoundError`
 
 ```python
 class DictionaryRepository:
+    @classmethod
+    def load(cls, path: Path) -> "DictionaryRepository": ...   # 起動時に1回だけ呼ぶ
     def find_lemma(self, surface: str) -> Lemma | None: ...
     def lemma(self, lemma_id: int) -> Lemma: ...
     def gojuon_lemma_count(self) -> int: ...          # 五十音順リストの語数
@@ -688,8 +696,8 @@ class QualityReporter:
 ```python
 MAX_MERGE_MORPHEMES = 8
 
-def merge_longest(run: list[Morpheme], repo: DictionaryRepository) -> list[Noun]:
-    """候補区間を、辞書との最長一致で名詞にまとめる。名詞にならない形態素は捨てる(呼び出し側で文字列に戻す)。"""
+def merge_longest(run: list[Morpheme], repo: DictionaryRepository) -> list[Noun | Morpheme]:
+    """候補区間を、辞書との最長一致で名詞にまとめる。名詞にならない形態素はそのまま返す(呼び出し側で文字列に戻す)。"""
     nouns, i = [], 0
     while i < len(run):
         matched = None
@@ -706,7 +714,8 @@ def merge_longest(run: list[Morpheme], repo: DictionaryRepository) -> list[Noun]
             nouns.append(matched)
             i += len(matched.morphemes)
         else:
-            i += 1   # 名詞にならない形態素(固有名詞、数詞、接頭辞、接尾辞、形式名詞)
+            nouns.append(run[i])   # 名詞にならない形態素(固有名詞、数詞、接頭辞、接尾辞、形式名詞)
+            i += 1
     return nouns
 ```
 
@@ -860,17 +869,20 @@ def shift_concept(start: Synset, n: int, repo: DictionaryRepository) -> ConceptS
             if size >= 2:
                 to_index, wrapped = shift_index(current.sibling_index, n, size)
                 to = repo.synset(group.member_ids[to_index])
-                assert to is not None   # ビルド時に保証する
-                return ConceptShift(climbs=climbs, from_=current, to=to, group=group, wrapped=wrapped)
+                assert to is not None   # ビルド時と読み込み時に保証する
+                route = ConceptRoute(climbs=climbs, parent=ref(group.parent_id), from_=ref(current),
+                                     to=ref(to), group_size=size, wrapped=wrapped)
+                return ConceptShift(to_lemma=repo.lemma(to.representative_lemma_id), route=route)
         if current.parent_id is None:
             return None  # 最上位まで兄弟が無い → no_sibling
         parent = repo.synset(current.parent_id)
         if parent is None:
-            raise DictionaryIntegrityError(current.parent_id)   # ビルド時に検査するため、起きたら辞書の不備
-        climbs.append(ClimbStep(from_=current, to=parent, relation=current.parent_relation))
+            raise DictionaryIntegrityError(current.parent_id)   # ビルド時と読み込み時に検査するため、起きたら辞書の不備
+        climbs.append(ConceptStep(from_=ref(current), to=ref(parent), relation=current.parent_relation))
         current = parent
 ```
 
+- `ref(synset)` は経路の表示用の `ConceptRef`(概念ID、代表語の表記、日本語の定義文。日本語が無ければ英語)を作る。APIレイヤーは辞書を引けないため、表示に要る値をサービスが詰める
 - 置換後の語は、置換先の概念の代表語。読みの無い見出し語も置換後の語になりうる
 - 元の語に読みが無くても、語義と概念が分かれば置き換えられる(読みは使わない)
 - 階層を上がった場合、上がった先の概念が代表語を持たないと兄弟グループに入っていない。その場合はさらに上がる(上のループで `sibling_group_id` がNoneになるため自然に続く)
@@ -929,10 +941,50 @@ class Noun:
 
 RawSegment = str | Noun         # 名詞以外の文字列、または名詞
 
+# 置換経路(APIの GojuonRoute・ConceptRoute・ConceptStep・ConceptRef と同じ項目。名前はsnake_case)
+@dataclass(frozen=True)
+class GojuonRoute:
+    from_index: int
+    to_index: int
+    wrapped: bool
+    neighbors: tuple[str, ...]
+    neighbors_omitted: int
+
+@dataclass(frozen=True)
+class ConceptRef:
+    synset_id: str
+    lemma: str | None           # 代表語の表記
+    definition: str | None      # 日本語の定義文。無ければ英語
+
+@dataclass(frozen=True)
+class ConceptStep:
+    from_: ConceptRef
+    to: ConceptRef
+    relation: ParentRelation
+
+@dataclass(frozen=True)
+class ConceptRoute:
+    climbs: tuple[ConceptStep, ...]
+    parent: ConceptRef
+    from_: ConceptRef
+    to: ConceptRef
+    group_size: int
+    wrapped: bool
+
 @dataclass(frozen=True)
 class GojuonShift:
     to_lemma: Lemma
     route: GojuonRoute
+
+@dataclass(frozen=True)
+class ConceptShift:
+    to_lemma: Lemma             # 置換先の概念の代表語
+    route: ConceptRoute
+
+@dataclass(frozen=True)
+class SenseChoice:
+    synset_id: str
+    is_override_applied: bool   # 語義の上書き指定(F8)を使ったか
 
 @dataclass(frozen=True)
 class ConceptShiftResult:
@@ -952,7 +1004,10 @@ class NounResult:
 @dataclass(frozen=True)
 class TransformResult:
     segments: tuple[str | NounResult, ...]
-    meta: TransformResultMeta   # TransformMetaと同じ項目(attributionを除く)
+    meta: TransformResultMeta   # TransformMetaと同じ項目(attributionを除く)。ignored_* は小さい順
+
+    @property
+    def text(self) -> str: ...  # 変換後の文章(手順5)
 ```
 
 #### 手順
