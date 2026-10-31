@@ -1,29 +1,69 @@
-"""決まった形態素を返す Tokenizer。本物のSudachiの読みに左右されず、期待値を固定するため。"""
+"""決まった形態素を返す Tokenizer。本物のSudachiに左右されず、期待値を固定するため。"""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from typing import Final, Literal
 
 from s7.domain.text import Morpheme, SplitMode
 
-_NOUN = ("名詞", "普通名詞", "一般", "*", "*", "*")
+# 形態素の種類 → Sudachiの品詞(6要素)
+MorphemeKind = Literal[
+    "noun",
+    "proper",
+    "numeral",
+    "prefix",
+    "suffix",
+    "pronoun",
+    "particle",
+    "verb",
+    "symbol",
+    "space",
+]
+_POS: Final[Mapping[MorphemeKind, tuple[str, ...]]] = {
+    "noun": ("名詞", "普通名詞", "一般", "*", "*", "*"),
+    "proper": ("名詞", "固有名詞", "地名", "一般", "*", "*"),
+    "numeral": ("名詞", "数詞", "*", "*", "*", "*"),
+    "prefix": ("接頭辞", "*", "*", "*", "*", "*"),
+    "suffix": ("接尾辞", "名詞的", "一般", "*", "*", "*"),
+    "pronoun": ("代名詞", "*", "*", "*", "*", "*"),
+    "particle": ("助詞", "格助詞", "*", "*", "*", "*"),
+    "verb": ("動詞", "一般", "*", "*", "五段-ラ行", "終止形-一般"),
+    "symbol": ("補助記号", "句点", "*", "*", "*", "*"),
+    "space": ("空白", "*", "*", "*", "*", "*"),
+}
+
+
+def morpheme(
+    surface: str, kind: MorphemeKind = "noun", normalized_form: str | None = None
+) -> Morpheme:
+    """テスト用の形態素を作る。読みは表記と同じにする。"""
+    return Morpheme(surface, normalized_form or surface, surface, _POS[kind], is_oov=False)
 
 
 class FakeTokenizer:
-    """表記と読みの対応表から形態素を返す。
+    """対応表から形態素を返す。
 
-    対応表にある文章は、その読みを持つ1つの形態素にする。読みのリストを渡すと、
-    同じ数の形態素に分ける(表記は1つ目にまとめる)。対応表に無い文章は1つの未知語にする。
+    sentences に文章がそのままあれば、その形態素の列を返す(名詞抽出のテスト用)。
+    readings にあれば、その読みを持つ形態素にする(読みの決定のテスト用)。読みのリストを渡すと、
+    同じ数の形態素に分ける(表記は1つ目にまとめる)。どちらにも無い文章は1つの未知語にする。
     """
 
-    def __init__(self, readings: Mapping[str, str | list[str]]) -> None:
-        self._readings = readings
+    def __init__(
+        self,
+        readings: Mapping[str, str | list[str]] | None = None,
+        sentences: Mapping[str, Sequence[Morpheme]] | None = None,
+    ) -> None:
+        self._readings = readings or {}
+        self._sentences = sentences or {}
 
     def tokenize(self, text: str, mode: SplitMode) -> list[Morpheme]:
+        if text in self._sentences:
+            return list(self._sentences[text])
         reading = self._readings.get(text)
         if reading is None:
-            return [Morpheme(text, text, text, _NOUN, is_oov=True)]
+            return [Morpheme(text, text, text, _POS["noun"], is_oov=True)]
         parts = [reading] if isinstance(reading, str) else reading
         surfaces = [text] + [""] * (len(parts) - 1)
         return [
-            Morpheme(surface, surface, part, _NOUN, is_oov=False)
+            Morpheme(surface, surface, part, _POS["noun"], is_oov=False)
             for surface, part in zip(surfaces, parts, strict=True)
         ]

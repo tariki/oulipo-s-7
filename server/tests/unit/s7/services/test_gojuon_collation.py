@@ -91,7 +91,7 @@ def _naive_levels(reading: str) -> tuple[list[str], list[int], list[int]]:
         base = _SMALL_TO_LARGE.get(base, base)
         base = {"ゐ": "い", "ゑ": "え"}.get(base, base)
         primary.append(base)
-        secondary.append({"゙": 1, "゚": 2}.get(marks[0], 0) if marks else 0)
+        secondary.append({"\u3099": 1, "\u309a": 2}.get(marks[0], 0) if marks else 0)
         tertiary.append(1 if is_small else 0)
     return primary, secondary, tertiary
 
