@@ -3,12 +3,16 @@
 # 1つずつ別のプルリクエストになる(React・Vite・FastAPI・Pydantic などを個別に判断するため)。
 # プルリクエストのタイトルは ci.yml の形式の検査(<type>: <件名>)に合わせ、commit-message で
 # build(依存関係)・ci(GitHub Actions)を付ける。scope の deps は使わない。
+# cooldown で、公開から14日たった版だけを提案させる(公開直後の不具合や取り下げを避けるため)。
+# セキュリティの更新は cooldown の対象外で、すぐにプルリクエストが来る。
 version: 2
 updates:
   - package-ecosystem: uv
     directory: /server
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     commit-message:
       prefix: build
     ignore:
@@ -27,6 +31,8 @@ updates:
     directory: /web
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     commit-message:
       prefix: build
     ignore:
@@ -37,6 +43,10 @@ updates:
       - dependency-name: eslint
         update-types: ["version-update:semver-major"]
       - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
+      # 型定義は実行する Node.js(.devcontainer/devcontainer.json・ci.yml の 24)に合わせる。
+      # Node.js を上げるときに一緒に手動で上げる
+      - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
     groups:
       runtime:
@@ -52,8 +62,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     commit-message:
       prefix: ci
     groups:
+      # メジャーバージョンの更新はグループから外し、1つずつ判断する(uv・npm と同じ)
       actions:
         patterns: ["*"]
+        update-types: [minor, patch]
