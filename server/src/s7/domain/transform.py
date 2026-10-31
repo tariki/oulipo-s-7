@@ -216,3 +216,51 @@ class TransformResult:
     def text(self) -> str:
         """変換後の文章(文字列と各名詞の replaced を順につなげたもの)。"""
         return "".join(s if isinstance(s, str) else s.replaced for s in self.segments)
+
+
+@dataclass(frozen=True, slots=True)
+class SenseItem:
+    """語義の一覧(F8)の1件。
+
+    Attributes:
+        synset_id: 概念ID。
+        rank: 順位(0が既定で選ばれる語義)。
+        definition: 日本語の定義文。無ければ英語の定義文。
+        lemmas: その概念の日本語の見出し語(Lemma.id の順)。
+    """
+
+    synset_id: str
+    rank: int
+    definition: str | None
+    lemmas: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SenseList:
+    """見出し語の語義の一覧(rank の順)。"""
+
+    lemma: str
+    senses: tuple[SenseItem, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Limits:
+    """入力の上限と利用制限の値(GET /api/v1/meta)。"""
+
+    max_chars: int
+    n_min: int
+    n_max: int
+    max_exclusions: int
+    max_sense_overrides: int
+    transform_requests_per_minute: int
+    auxiliary_requests_per_minute: int
+    chars_per_minute: int
+
+
+@dataclass(frozen=True, slots=True)
+class MetaInfo:
+    """辞書のメタ情報と上限、出典(GET /api/v1/meta)。"""
+
+    dictionary_version: str
+    limits: Limits
+    attribution: str

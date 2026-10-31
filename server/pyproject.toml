@@ -57,6 +57,8 @@ convention = "google"
 # S311: 性質テストは、シードを固定した random で入力を作る(暗号用途ではない)
 "tests/**" = ["S101", "D", "PLR2004", "TID251", "S311"]
 "src/s7/logging_config.py" = ["TID251"]
+# API仕様書の説明は Markdown の表で、行を折り返せないため
+"src/s7/api/openapi_description.py" = ["E501"]
 # 計測スクリプトは結果を標準出力に出す(手で ruff check ../tools/analysis を実行して整える)
 "../tools/analysis/**" = ["T201"]
 
