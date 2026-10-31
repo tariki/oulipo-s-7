@@ -339,7 +339,7 @@ def merge_longest(run: list[Morpheme], repo: DictionaryRepository) -> list[Noun]
 | `test:watch` | `vitest` |
 | `coverage` | `vitest run --coverage` |
 | `e2e` | `playwright test` |
-| `e2e:install` | `playwright install --with-deps chromium webkit` |
+| `e2e:install` | `playwright install --with-deps chromium`(手元はChromiumだけ。WebKitは `main.yml` で入れる) |
 
 ### 命名規則
 
@@ -379,7 +379,7 @@ type TransformState =
   | { status: 'checking' }
   | { status: 'starting' }
   | { status: 'idle'; staleResult?: TransformResponse }
-  | { status: 'loading' }
+  | { status: 'loading'; previousResult?: TransformResponse }  // 変換し直している間も直前の結果を薄く残す
   | { status: 'success'; result: TransformResponse }
   | { status: 'error'; error: ApiError };
 ```

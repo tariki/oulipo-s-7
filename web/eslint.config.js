@@ -67,7 +67,7 @@ function dependencyRuleFor(directory) {
   }
   // 自動生成の型は api/types.ts からだけ参照する
   patterns.push({
-    group: ['**/generated/**', '**/generated'],
+    group: ['**/api/generated/**', '**/api/generated'],
     message: 'api/generated/ は api/types.ts からだけ取り込めます',
   });
   return {
@@ -79,7 +79,14 @@ function dependencyRuleFor(directory) {
 
 export default defineConfig(
   {
-    ignores: ['dist/', 'coverage/', 'node_modules/', 'src/api/generated/'],
+    ignores: [
+      'dist/',
+      'coverage/',
+      'node_modules/',
+      'src/api/generated/',
+      'playwright-report/',
+      'test-results/',
+    ],
   },
   js.configs.recommended,
   tsConfigs.strictTypeChecked,
