@@ -114,12 +114,13 @@ const charCount = text.length;
 | `ignore`(追加) | `D104` | `__init__.py` は空にする(`docs/repository-structure.md`)ため、パッケージのdocstringを求めない |
 | `per-file-ignores` | `tests/**`: `S101`(`assert`)、`D`、`PLR2004`、`TID251`、`S311` | テストでは `assert` と具体的な値を使い、docstringは任意にする。ログの形式を確かめるため `logging` を直接使ってよい。性質テストはシードを固定した `random` で入力を作る |
 | `per-file-ignores` | `src/s7/logging_config.py`: `TID251` | `logging` を使ってよい唯一の場所 |
+| `per-file-ignores` | `../tools/analysis/**`: `T201` | 計測スクリプトは結果を `print` で出す |
 | `flake8-tidy-imports.banned-api` | `logging` | ログの経路を `logging_config.py` に限るため |
 | `mccabe.max-complexity` | 10 | 関数の分岐が多すぎないように |
 | `pylint.max-statements` | 30 | 下の「関数設計」の目安を機械的に見る |
 | `pylint.max-args` | 5 | 下の「関数設計」。Ruffは `self` を数えないため、5で「`self` を除いて5個まで」になる(2026-10-25に確認) |
 
-- `scripts/*.py` と `tools/analysis/` は `server/` の外にあるため、上のツールの対象にならない。手で `uv run --directory server ruff check ../scripts ../tools/analysis` を実行して整える(mypyのstrictは求めない)
+- `scripts/*.py` と `tools/analysis/` は `server/` の外にあるため、上のツールの対象にならない。`tools/analysis/` は `scripts/check.sh` が `ruff check`・`ruff format --check` を実行する。`scripts/*.py` を作ったら同じように足す(mypyのstrictは求めない)
 
 ### 命名規則
 

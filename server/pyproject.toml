@@ -57,6 +57,8 @@ convention = "google"
 # S311: 性質テストは、シードを固定した random で入力を作る(暗号用途ではない)
 "tests/**" = ["S101", "D", "PLR2004", "TID251", "S311"]
 "src/s7/logging_config.py" = ["TID251"]
+# 計測スクリプトは結果を標準出力に出す(手で ruff check ../tools/analysis を実行して整える)
+"../tools/analysis/**" = ["T201"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "logging".msg = "ログは s7.logging_config の関数で出す(docs/development-guidelines.md「入力文を残さない」)"
@@ -111,7 +113,7 @@ skip_empty = true
 
 # --- import-linter(docs/repository-structure.md「依存関係のルール」) ---
 # import-linter は、契約で名指ししたモジュールが無いとエラーにする。
-# まだ無いモジュール(adapters.sudachi_tokenizer、s7builder.quality_report など)を名指しする契約は、
+# まだ無いモジュール(services.formal_nouns、s7builder.quality_report など)を名指しする契約は、
 # そのモジュールを作る作業で足す。
 # forbidden 契約は直接の取り込みだけを禁止する(allow_indirect_imports)。既定のままだと、
 # api → services → repositories のような設計どおりの経路まで違反になるため。
@@ -179,3 +181,24 @@ type = "forbidden"
 allow_indirect_imports = true
 source_modules = ["s7builder"]
 forbidden_modules = ["s7.api", "s7.config"]
+
+[[tool.importlinter.contracts]]
+name = "辞書ビルダーが使ってよい services と repositories は共有の部品だけ"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["s7builder"]
+forbidden_modules = ["s7.services", "s7.repositories"]
+# services.formal_nouns は変換の処理の作業で、s7builder.quality_report の例外は品質の報告の作業で足す
+ignore_imports = [
+  "s7builder.** -> s7.services.gojuon_collation",
+  "s7builder.** -> s7.repositories.dictionary_schema",
+]
+
+[[tool.importlinter.contracts]]
+name = "Sudachi を直接使ってよいのは adapters.sudachi_tokenizer だけ"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["s7.api", "s7.services", "s7.repositories", "s7builder"]
+forbidden_modules = ["s7.adapters.sudachi_tokenizer", "sudachipy"]
+# 組み立てを行う辞書ビルダーのコマンドだけは、Sudachiによる実装を作ってよい
+ignore_imports = ["s7builder.__main__ -> s7.adapters.sudachi_tokenizer"]

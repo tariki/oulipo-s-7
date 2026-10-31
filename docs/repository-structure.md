@@ -176,6 +176,7 @@ server/src/s7builder/
 ├── reading_assigner.py        # ReadingAssigner
 ├── sibling_indexer.py         # SiblingIndexer
 ├── sense_ranker.py            # SenseRanker
+├── errors.py                  # BuildError(辞書のビルドの失敗)
 ├── dictionary_writer.py       # s7dict.sqliteへの書き込み
 ├── build_report.py            # ビルドの報告(件数、除外した語の数、読みの決め方ごとの数)
 └── quality_report.py          # 品質の報告(data/standard-texts/ の3本での両モードの置換率。QualityReporter)
@@ -196,6 +197,7 @@ server/tests/
 ├── conftest.py                    # 共通フィクスチャ(小さな変換用辞書のビルド、TestClient、ログの取り込み)
 ├── fixtures/
 │   ├── wnjpn_sample.sql           # 数十語の日本語WordNetのサンプル(SQL文。差分を読めるようにテキストで持つ)
+│   ├── sample_wordnet.py          # wnjpn_sample.sql からSQLiteを作る関数と、それに合わせた読み・除外リスト
 │   └── fake_tokenizer.py          # 決まった形態素を返すTokenizer
 ├── unit/                          # src/と同じ構造
 │   ├── s7/
@@ -215,9 +217,12 @@ server/tests/
 │   │       └── middleware/
 │   │           └── test_rate_limiter.py
 │   └── s7builder/
+│       ├── test_wordnet_reader.py  # 名詞だけを読む、同じ sid の定義文の版、頻度の合計、読めないファイル
 │       ├── test_lemma_filter.py
 │       ├── test_reading_assigner.py
 │       ├── test_sibling_indexer.py
+│       ├── test_sense_ranker.py
+│       ├── test_dictionary_writer.py  # 外部キーの検査、ファイルの権限
 │       └── test_quality_report.py # 置換率の計算(偽物のTokenizerと小さな辞書で)
 ├── integration/
 │   ├── api/                       # TestClientでAPIを呼ぶ
@@ -231,7 +236,8 @@ server/tests/
 │   │   ├── test_logging_format.py # ログの各行の項目と型、本文を含まないこと
 │   │   └── test_determinism.py    # 同じ入力を2回送って同じ結果になること
 │   ├── builder/
-│   │   └── test_build_sample.py   # wnjpn_sample.sqlからビルドし、件数・並び順・兄弟グループと、2回ビルドの一致を確かめる
+│   │   ├── test_build_sample.py   # wnjpn_sample.sqlからビルドし、件数・並び順・兄弟グループと、2回ビルドの一致を確かめる
+│   │   └── test_main.py           # python -m s7builder の終了コード、報告のファイル、既定のパス
 │   └── sudachi/                   # 本物のSudachiを使う(マーカー: sudachi)
 │       ├── test_sudachi_tokenizer.py  # モードA・C、読み、未知語、記号の仮の読み「キゴウ」
 │       ├── test_sudachi_pos.py    # 品詞の扱い(接尾辞・数詞・固有名詞の品詞の値)
@@ -417,8 +423,8 @@ licenses/
 
 | ファイル | 内容 |
 |----------|------|
-| `fetch-wordnet.sh` | `wnjpn.db` をダウンロードし、`data/wnjpn.db.sha256` で中身を確かめる |
-| `build-dictionary.sh` | `s7builder build` と `s7builder quality` を実行し、`data/build/s7dict.sqlite` と2つの報告を作る |
+| `fetch-wordnet.sh` | `wnjpn.db` をダウンロードし(配布元の bond-lab/wnja の v1.1 のリリース。`WORDNET_URL` で変えられる)、`data/wnjpn.db.sha256` で中身を確かめる |
+| `build-dictionary.sh` | `s7builder build` と `s7builder quality` を実行し、`data/build/s7dict.sqlite` と2つの報告を作る(`quality` は品質の報告の作業で足す。いまは `build` だけ) |
 | `check-reports.sh` | 2つの報告(`build-report.json`・`quality-report.json`)を作り直し、コミット済みのものと一致するかを確かめる(CIで使う) |
 | `export-openapi.py` | サーバーのOpenAPI仕様をJSONで出力する(サーバーを起動せずに) |
 | `generate-api-types.sh` | `export-openapi.py` の出力から `web/src/api/generated/schema.d.ts` を作る |
@@ -438,6 +444,7 @@ licenses/
 - architecture.mdの「設計前の検証結果」の各項目を計測するスクリプトを置く
 - 実行時のサーバー・辞書ビルダーからは参照しない。`uv run --directory server python ../tools/analysis/[スクリプト名].py` で実行する
 - ファイル名はsnake_case(例: `measure_reading_coverage.py`)
+- いまあるもの: `measure_reading_coverage.py`(読みの付与率と決まらない理由の内訳)、`measure_sibling_groups.py`(兄弟グループの大きさ、上位語が複数ある概念)
 
 ### deploy/ と .github/
 
