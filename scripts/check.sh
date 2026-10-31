@@ -24,9 +24,9 @@ step "Python: ruff format --check"
 py ruff format --check
 step "Python: mypy"
 py mypy
-step "Python: tools/analysis の ruff check・format --check"
-py ruff check ../tools/analysis
-py ruff format --check ../tools/analysis
+step "Python: tools/analysis・scripts の ruff check・format --check"
+py ruff check ../tools/analysis ../scripts
+py ruff format --check ../tools/analysis ../scripts
 step "Python: lint-imports"
 py lint-imports
 step "Python: pytest(カバレッジ 全体80%以上)"

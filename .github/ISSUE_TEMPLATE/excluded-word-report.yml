@@ -1,0 +1,35 @@
+name: 不適切な語の報告
+description: 変換の結果に、一般公開の出力としてふさわしくない語(差別語・卑語など)が出た場合に報告する
+title: "不適切な語の報告: "
+labels: ["excluded-word"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        報告を受けた語は、確認のうえ置換先から除外する語のリスト(`data/excluded-lemmas.txt`)に追加し、
+        辞書のバージョンを上げて反映します。目安として2週間以内に対応します。
+        入力した文章そのものは書かなくてかまいません(個人的な内容を含む場合は書かないでください)。
+  - type: input
+    id: word
+    attributes:
+      label: 出た語
+      description: 結果に出た語(置き換え後の語)
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: ルール
+      options:
+        - 五十音順
+        - 概念版
+        - 分からない
+  - type: input
+    id: n
+    attributes:
+      label: N
+  - type: textarea
+    id: reason
+    attributes:
+      label: ふさわしくないと考える理由
+      description: 差別語・卑語・性的な語など。分かる範囲で書いてください

@@ -1,0 +1,45 @@
+# mainへのマージ時のCI。内容は docs/development-guidelines.md「手元で確かめることとCI」の
+# 「mainへのマージ」の列。いまはE2Eテストだけ(本物の辞書のビルド、報告の一致、スナップショット、
+# 性能テストは、品質の報告の作業で足す)。失敗したら、まずそのプルリクエストを戻す(revert)。
+name: main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: 依存関係を入れる
+        run: npm ci
+      - name: ブラウザを入れる(Chromium、WebKit)
+        run: npx playwright install --with-deps chromium webkit
+      - name: E2Eテスト(PC幅のChromium・WebKit、スマートフォン幅360px)
+        run: npm run e2e
+        env:
+          CI: "true"
+      - name: 失敗したときの記録を残す
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: web/test-results/
+          retention-days: 7

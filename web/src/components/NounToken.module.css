@@ -1,0 +1,71 @@
+.wrapper,
+.wrapperDismissed {
+  position: relative;
+}
+
+.token {
+  min-height: var(--touch-target);
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.replaced {
+  background: var(--color-replaced);
+  text-decoration: underline solid 2px;
+  text-underline-offset: 3px;
+}
+
+.climbed {
+  background: var(--color-climbed);
+  text-decoration: underline solid 2px;
+  text-underline-offset: 3px;
+}
+
+.unchanged,
+.notInDictionary {
+  text-decoration: underline dotted 2px;
+  text-underline-offset: 3px;
+}
+
+.excluded {
+  text-decoration: line-through;
+}
+
+.mark {
+  font-size: 0.75em;
+  vertical-align: super;
+}
+
+/* ツールチップ: ホバー・フォーカス・選択で出す */
+.tooltip,
+.tooltipOpen {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 1;
+  width: max-content;
+  max-width: 16rem;
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.85em;
+  color: var(--color-on-primary);
+  background: var(--color-text);
+  border-radius: var(--radius);
+}
+
+.tooltip {
+  display: none;
+}
+
+/* ホバーで出す(Esc で消した後は、ポインターが離れるまで出さない)。フォーカスでは isOpen で出す */
+.wrapper:hover .tooltip,
+.tooltipOpen {
+  display: block;
+}
+
+.wrapperDismissed .tooltipOpen {
+  display: none;
+}

@@ -1,0 +1,59 @@
+/* スマートフォン: 変換後の文章を先に(上に)表示する */
+.result,
+.stale {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stale {
+  opacity: 0.55;
+}
+
+/* PC(幅768px以上): 元の文章を左、変換後を右に並べる */
+@media (min-width: 768px) {
+  .result,
+  .stale {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .original {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .replaced {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.heading h2 {
+  margin: 0;
+  font-size: 1.1em;
+}
+
+.text {
+  padding: var(--space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+}
+
+/* 画面外の段落の描画を省く(content-visibility はブロック要素にだけ効く)。
+   段落の末尾の改行は pre-wrap でも余分な行にならない。空行だけの段落も1行分の高さを残す */
+.paragraph {
+  display: block;
+  min-height: 1.7em;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1.7em;
+}
