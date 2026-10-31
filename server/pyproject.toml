@@ -20,7 +20,7 @@ dev = [
   "pip-audit>=2.9",
   "pytest>=8.4",
   "pytest-cov>=7.0",
-  "ruff>=0.14",
+  "ruff>=0.17.1",
 ]
 
 [build-system]
