@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "S+7メーカー: 文章中の名詞を辞書のN個先の語に置き換えるAPIサーバーと辞書ビルダー"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-  "fastapi>=0.143",
+  "fastapi>=0.143.3",
   "pydantic>=2.14",
   "uvicorn>=0.54",
   # 変換結果が変わるため完全に固定する(docs/architecture.md「依存関係管理」)
