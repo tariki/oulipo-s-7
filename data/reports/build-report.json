@@ -1,0 +1,18 @@
+{
+  "excluded_lemma_count": 14,
+  "excluded_list_size": 14,
+  "meta": {
+    "built_at": "2026-10-31",
+    "dictionary_version": "2026.10.0",
+    "gojuon_lemma_count": 64141,
+    "lemma_count": 65774,
+    "sudachidict_version": "core-20261015",
+    "synset_count": 82115,
+    "wordnet_version": "wnjpn-1.1"
+  },
+  "no_reading_count": 1633,
+  "reading_by_kana_count": 18300,
+  "reading_by_sudachi_count": 45841,
+  "sibling_group_count": 11848,
+  "wordnet_lemma_count": 65788
+}
