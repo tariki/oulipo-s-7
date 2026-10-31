@@ -209,6 +209,7 @@ server/tests/
 │   │   │   ├── test_concept_shifter.py
 │   │   │   └── test_sense_selector.py
 │   │   ├── repositories/
+│   │   │   ├── test_dictionary_schema.py      # テーブルの列とエンティティの項目の一致
 │   │   │   └── test_dictionary_repository.py  # 整合性の検査
 │   │   └── api/
 │   │       └── middleware/
@@ -232,6 +233,7 @@ server/tests/
 │   ├── builder/
 │   │   └── test_build_sample.py   # wnjpn_sample.sqlからビルドし、件数・並び順・兄弟グループと、2回ビルドの一致を確かめる
 │   └── sudachi/                   # 本物のSudachiを使う(マーカー: sudachi)
+│       ├── test_sudachi_tokenizer.py  # モードA・C、読み、未知語、記号の仮の読み「キゴウ」
 │       ├── test_sudachi_pos.py    # 品詞の扱い(接尾辞・数詞・固有名詞の品詞の値)
 │       └── test_sudachi_limits.py # 入力の上限(49,149バイト)
 ├── snapshot/                      # 本物の変換用辞書が必要(mainへのマージ時のみ実行)

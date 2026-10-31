@@ -5,6 +5,7 @@
 > 2026-10-24: 機能設計書のレビュー(3.5/5)の指摘を反映。あわせて、読みが決まらない見出し語も概念版では置き換えに使うように変更した。
 > 2026-10-25: 用語集・開発ガイドラインのレビューに合わせ、`INVALID_REQUEST` の条件と画面遷移図(確認中からの自動変換、20秒の数え始め)を補った。
 > 2026-10-25: リポジトリ構造定義書のレビューに合わせ、`Morpheme` の置き場所、ミドルウェアの処理順(セキュリティヘッダー・gzip・リクエストログ)、画面のフックと部品、標準の文章の置き場所(`data/standard-texts/`)を更新した。
+> 2026-10-31: 辞書ビルダーの共有部品の実装に合わせ、`Morpheme`(`reading_form`・`is_oov`)と `Tokenizer` の分割モードを追加した。
 
 ## システム構成図
 
@@ -908,7 +909,14 @@ def shift_concept(start: Synset, n: int, repo: DictionaryRepository) -> ConceptS
 class Morpheme:                 # domain/text.py(Tokenizerが返す)
     surface: str
     normalized_form: str
+    reading_form: str           # 読み(カタカナ)。見出し語の読みの決定で使う
     pos: tuple[str, ...]        # Sudachiの品詞(6要素)
+    is_oov: bool                # 未知語か。見出し語の読みの決定で使う
+
+SplitMode = Literal["A", "C"]   # domain/text.py。名詞抽出はA、見出し語の読みの決定はC
+
+class Tokenizer(Protocol):      # adapters/tokenizer.py
+    def tokenize(self, text: str, mode: SplitMode) -> list[Morpheme]: ...
 
 @dataclass(frozen=True)
 class Noun:

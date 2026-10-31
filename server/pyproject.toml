@@ -54,7 +54,8 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 # TID251: テストはログの形式を確かめるため logging を直接使う
-"tests/**" = ["S101", "D", "PLR2004", "TID251"]
+# S311: 性質テストは、シードを固定した random で入力を作る(暗号用途ではない)
+"tests/**" = ["S101", "D", "PLR2004", "TID251", "S311"]
 "src/s7/logging_config.py" = ["TID251"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
@@ -79,6 +80,13 @@ files = ["src", "tests"]
 mypy_path = ["src", "tests"]
 # tests/ には __init__.py を置かないため、ディレクトリを基準にモジュール名を決める
 explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+# SudachiPy は型の定義(.pyi)を同梱しているが py.typed が無いため、明示して読ませる。
+# __init__.py が __all__ を持たずに再公開しているため、再公開も認める
+module = ["sudachipy", "sudachipy.*"]
+follow_untyped_imports = true
+implicit_reexport = true
 
 # --- pytest(docs/development-guidelines.md「pytestの設定」) ---
 
