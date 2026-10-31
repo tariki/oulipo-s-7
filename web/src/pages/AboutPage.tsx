@@ -1,7 +1,6 @@
-import { Link } from 'react-router';
-
 import { parseDictionaryHistory } from '../about/parseDictionaryHistory';
 import { DICTIONARY_HISTORY, LICENSE_TEXTS } from '../about/sources';
+import { SiteHeader } from '../components/SiteHeader';
 import styles from './AboutPage.module.css';
 
 /** 不適切な語の報告の窓口(GitHubのIssueのテンプレート)。 */
@@ -12,12 +11,10 @@ const REPORT_URL =
 export function AboutPage() {
   const releases = parseDictionaryHistory(DICTIONARY_HISTORY);
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <h1>このアプリについて</h1>
-        <Link to="/">変換画面へ戻る</Link>
-      </header>
+    <div>
+      <SiteHeader isPageHeading={false} />
       <main className={styles.main}>
+        <h1 className={styles.title}>このアプリについて</h1>
         <nav aria-label="目次">
           <ul className={styles.toc}>
             <li>

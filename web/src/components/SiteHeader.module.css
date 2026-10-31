@@ -1,0 +1,86 @@
+.band {
+  color: var(--color-on-band);
+  background: var(--color-band);
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 var(--space-3);
+}
+
+.title {
+  margin: 0;
+  padding-top: var(--space-3);
+  line-height: 0;
+}
+
+.home {
+  display: block;
+  color: inherit;
+}
+
+/* 帯の上は暗い地のため、フォーカスの枠を白にする */
+.band :focus-visible {
+  outline-color: var(--color-focus-on-band);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding-bottom: var(--space-3);
+}
+
+/* 項目ごとに面と同じ色の印を付ける(印は飾り。項目は文字で区別できる) */
+.nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  color: var(--color-on-band);
+  text-decoration: none;
+  border-left: 6px solid;
+}
+
+.nav a:hover,
+.nav a[aria-current='page'] {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.nav .transform {
+  border-left-color: var(--color-panel-input);
+}
+
+.nav .about {
+  border-left-color: var(--color-panel-original);
+}
+
+.nav .api {
+  border-left-color: var(--color-panel-replaced);
+}
+
+/* PC では帯の右下に縦に並べる */
+@media (min-width: 768px) {
+  .nav {
+    flex-direction: column;
+  }
+}
+
+.tagline {
+  margin: 0;
+  padding: var(--space-2) 0;
+  font-size: 1.1em;
+  color: var(--color-band);
+  background: var(--color-background);
+}
+
+.tagline .inner {
+  display: block;
+}

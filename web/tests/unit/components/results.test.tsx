@@ -98,11 +98,11 @@ function resultWith(...nouns: string[]): TransformResponse {
 }
 
 describe('ResultView', () => {
-  it('元の文章と変換後の文章を表示する', () => {
+  it('原文と変換後の文章を表示する', () => {
     render(<ResultView id="result" result={transformResponse()} isStale={false} />);
 
     expect(screen.getByRole('heading', { name: '変換後' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '元の文章' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '原文' })).toBeInTheDocument();
     expect(screen.getByText('吾輩は猫である。')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '獅子、元の語は猫' })).toBeInTheDocument();
   });

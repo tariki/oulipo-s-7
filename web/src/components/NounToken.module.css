@@ -14,21 +14,23 @@
 }
 
 .replaced {
+  padding: 0 0.15em;
   background: var(--color-replaced);
-  text-decoration: underline solid 2px;
-  text-underline-offset: 3px;
+  text-decoration: underline solid 3px;
+  text-underline-offset: 4px;
 }
 
 .climbed {
+  padding: 0 0.15em;
   background: var(--color-climbed);
-  text-decoration: underline solid 2px;
-  text-underline-offset: 3px;
+  text-decoration: underline solid 3px;
+  text-underline-offset: 4px;
 }
 
 .unchanged,
 .notInDictionary {
   text-decoration: underline dotted 2px;
-  text-underline-offset: 3px;
+  text-underline-offset: 4px;
 }
 
 .excluded {
@@ -51,9 +53,9 @@
   max-width: 16rem;
   padding: var(--space-1) var(--space-2);
   font-size: 0.85em;
-  color: var(--color-on-primary);
-  background: var(--color-text);
-  border-radius: var(--radius);
+  line-height: 1.6;
+  color: var(--color-on-band);
+  background: var(--color-band);
 }
 
 .tooltip {

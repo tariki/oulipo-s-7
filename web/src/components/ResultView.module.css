@@ -10,7 +10,7 @@
   opacity: 0.55;
 }
 
-/* PC(幅768px以上): 元の文章を左、変換後を右に並べる */
+/* PC(幅768px以上): 原文を左、変換後を右に並べる */
 @media (min-width: 768px) {
   .result,
   .stale {
@@ -29,31 +29,21 @@
   }
 }
 
-.heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.heading h2 {
-  margin: 0;
-  font-size: 1.1em;
-}
-
 .text {
-  padding: var(--space-3);
+  font-size: 1.1em;
+  line-height: 2.1;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  background: var(--color-surface);
-  border-radius: var(--radius);
 }
 
 /* 画面外の段落の描画を省く(content-visibility はブロック要素にだけ効く)。
-   段落の末尾の改行は pre-wrap でも余分な行にならない。空行だけの段落も1行分の高さを残す */
+   段落の末尾の改行は pre-wrap でも余分な行にならない。空行だけの段落も1行分の高さを残す。
+   content-visibility は段落の外を切り取るため、最後の行の語の説明(ツールチップ)が切れないよう、
+   切り取る範囲を広げる */
 .paragraph {
   display: block;
-  min-height: 1.7em;
+  min-height: 2.1em;
   content-visibility: auto;
-  contain-intrinsic-size: auto 1.7em;
+  contain-intrinsic-size: auto 2.1em;
+  overflow-clip-margin: 4em;
 }

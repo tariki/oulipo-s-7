@@ -39,7 +39,7 @@ describe('App', () => {
       await screen.findByRole('heading', { level: 1, name: 'このアプリについて' }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: '変換画面へ戻る' }));
+    await user.click(screen.getByRole('link', { name: '変換する' }));
     expect(screen.getByRole('heading', { level: 1, name: 'S+7メーカー' })).toBeInTheDocument();
   });
 });
