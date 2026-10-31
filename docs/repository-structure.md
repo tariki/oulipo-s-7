@@ -299,6 +299,9 @@ web/
 │   │   ├── useServerReadiness.ts  # 準備中の確認(checking・starting)、meta の再試行、20秒の上限
 │   │   └── useTransform.ts        # TransformState、保持した変換操作と破棄、503後の再試行、除外と語義の指定
 │   ├── components/
+│   │   ├── SiteHeader.tsx         # 両ページに共通の見出しの帯とメニュー
+│   │   ├── Wordmark.tsx           # 「S+7」の SVG(ウェブフォントを使わない)
+│   │   ├── Panel.tsx              # 縦書きの見出しの付いた色の面
 │   │   ├── SkipLink.tsx           # 結果へのスキップリンク
 │   │   ├── TextInput.tsx
 │   │   ├── TextInput.module.css

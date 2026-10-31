@@ -1,0 +1,12 @@
+/* 帯の高さに合わせて、スマートフォンでは小さくする */
+.wordmark {
+  display: block;
+  width: auto;
+  height: 4.5rem;
+}
+
+@media (min-width: 768px) {
+  .wordmark {
+    height: 8rem;
+  }
+}

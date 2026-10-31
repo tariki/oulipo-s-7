@@ -53,7 +53,7 @@ test('概念版に切り替えて変換し直しても、入力が残る', async
   expect(api.transformRequests.at(-1)).toEqual({ text: TEXT, mode: 'concept', n: 3 });
 });
 
-test('スマートフォン幅では、変換後の文章を元の文章より先に表示する', async ({ page }, testInfo) => {
+test('スマートフォン幅では、変換後の文章を原文より先に表示する', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile-360', 'スマートフォン幅だけ');
   await mockApi(page);
   await page.goto('/');
@@ -61,9 +61,19 @@ test('スマートフォン幅では、変換後の文章を元の文章より�
   await page.getByRole('button', { name: '変換する' }).click();
 
   const replaced = await page.getByRole('heading', { name: '変換後' }).boundingBox();
-  const original = await page.getByRole('heading', { name: '元の文章' }).boundingBox();
+  const original = await page.getByRole('heading', { name: '原文' }).boundingBox();
   expect(replaced?.y).toBeLessThan(original?.y ?? 0);
   // 横にはみ出さない
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(scrollWidth).toBeLessThanOrEqual(360);
+});
+
+test('スマートフォン幅では、このアプリについても横にはみ出さない', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile-360', 'スマートフォン幅だけ');
+  await mockApi(page);
+  await page.goto('/about');
+  await expect(page.getByRole('heading', { level: 1, name: 'このアプリについて' })).toBeVisible();
+
   const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
   expect(scrollWidth).toBeLessThanOrEqual(360);
 });

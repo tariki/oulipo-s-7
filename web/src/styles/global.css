@@ -4,17 +4,17 @@
   box-sizing: border-box;
 }
 
+/* 見出しの帯を画面の端まで出すため、body に余白を付けない(中身は各ページの入れ物で中央に寄せる) */
 body {
   margin: 0;
-  padding: var(--space-3);
   font-family: var(--font-body);
   line-height: 1.7;
   color: var(--color-text);
-  background: var(--color-background);
+  background: var(--color-ground);
 }
 
 a {
-  color: var(--color-link);
+  color: var(--color-text);
 }
 
 /* フォーカスは2px以上の枠で見えるようにする */

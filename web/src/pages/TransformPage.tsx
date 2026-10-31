@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
 
 import {
   charsBucketOf,
@@ -11,7 +10,9 @@ import { CopyButton } from '../components/CopyButton';
 import { Legend } from '../components/Legend';
 import { ModeSelector } from '../components/ModeSelector';
 import { NInput, isValidN } from '../components/NInput';
+import { Panel } from '../components/Panel';
 import { ResultView } from '../components/ResultView';
+import { SiteHeader } from '../components/SiteHeader';
 import { SkipLink } from '../components/SkipLink';
 import { StatusBanner } from '../components/StatusBanner';
 import { TextInput } from '../components/TextInput';
@@ -89,33 +90,28 @@ export function TransformPage() {
   }, [client, pageViewId, shownSeq]);
 
   return (
-    <div className={styles.page}>
+    <div>
       <SkipLink targetId={RESULT_ID} />
-      <header className={styles.header}>
-        <h1>S+7メーカー</h1>
-        <nav aria-label="ページ">
-          <Link to="/about">このアプリについて</Link>
-          <a href="/api/docs">API</a>
-        </nav>
-      </header>
+      <SiteHeader isPageHeading />
       {/* 状態の変化を読み上げる領域。中身だけを差し替えるため、常に DOM に置く */}
       <p className={styles.visuallyHidden} aria-live="polite">
         {announcementOf(state, isWaiting, transform.isSlow)}
       </p>
       <main className={styles.main}>
-        <p className={styles.lead}>文章中の名詞を、辞書でN個先の語に置き換えます。</p>
-        <TextInput value={text} maxChars={MAX_CHARS} onChange={transform.setText} />
-        <div className={styles.controls}>
-          <ModeSelector value={mode} onChange={transform.setMode} />
-          <NInput value={n} min={N_MIN} max={N_MAX} onChange={transform.setN} />
-          <TransformButton
-            isDisabled={!isInputValid}
-            isBusy={isLoading}
-            isWaiting={isWaiting}
-            isSlow={transform.isSlow}
-            onClick={transform.submit}
-          />
-        </div>
+        <Panel title="入力" tone="input">
+          <TextInput value={text} maxChars={MAX_CHARS} onChange={transform.setText} />
+          <div className={styles.controls}>
+            <ModeSelector value={mode} onChange={transform.setMode} />
+            <NInput value={n} min={N_MIN} max={N_MAX} onChange={transform.setN} />
+            <TransformButton
+              isDisabled={!isInputValid}
+              isBusy={isLoading}
+              isWaiting={isWaiting}
+              isSlow={transform.isSlow}
+              onClick={transform.submit}
+            />
+          </div>
+        </Panel>
         {(state.status === 'starting' || (state.status === 'checking' && isWaiting)) && (
           <StatusBanner
             tone="notice"

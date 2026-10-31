@@ -1,24 +1,34 @@
-.page {
+/* 読み物のページ: 白い面に、節ごとの見出しを面の見出しの色で置く */
+.main {
   max-width: 48rem;
-  margin: 0 auto;
+  margin: var(--space-4) auto;
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  background: var(--color-panel-plain);
 }
 
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
+.title {
+  margin: 0 0 var(--space-2);
+  font-size: 1.8rem;
+  font-weight: normal;
+  letter-spacing: 0.05em;
 }
 
 .main section {
   scroll-margin-top: var(--space-3);
 }
 
+.main h2 {
+  margin: var(--space-4) 0 var(--space-2);
+  padding-left: var(--space-2);
+  font-size: 1.3rem;
+  border-left: 6px solid var(--color-band);
+}
+
 .toc {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1) var(--space-3);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -34,5 +44,5 @@
   padding: var(--space-2);
   font-size: 0.8em;
   white-space: pre-wrap;
-  background: var(--color-surface);
+  background: var(--color-ground);
 }

@@ -2,6 +2,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef } from 'rea
 
 import type { TransformResponse } from '../api/types';
 import { splitParagraphs } from '../segments/splitParagraphs';
+import { Panel } from './Panel';
 import { ParagraphView } from './ParagraphView';
 import styles from './ResultView.module.css';
 
@@ -17,7 +18,7 @@ interface ResultViewProps {
 const TOKEN_SELECTOR = '[data-noun-token]';
 
 /**
- * 元の文章と変換後の文章を並べて表示する(PCは左右、スマートフォンは変換後が先)。
+ * 原文と変換後の文章を、それぞれ色の面に並べて表示する(PCは左右、スマートフォンは変換後が先)。
  * 変換後の語は、Tabキーでは1回で入り、中では左右の矢印キーで移る(ロービングタブインデックス)。
  */
 export function ResultView({ id, result, isStale, actions }: ResultViewProps) {
@@ -58,11 +59,7 @@ export function ResultView({ id, result, isStale, actions }: ResultViewProps) {
       aria-label="変換の結果"
       tabIndex={-1}
     >
-      <div className={styles.replaced}>
-        <div className={styles.heading}>
-          <h2>変換後</h2>
-          {actions}
-        </div>
+      <Panel title="変換後" tone="replaced" actions={actions} className={styles.replaced}>
         <div ref={replacedRef} className={styles.text}>
           {paragraphs.map((paragraph) => (
             <ParagraphView
@@ -74,11 +71,8 @@ export function ResultView({ id, result, isStale, actions }: ResultViewProps) {
             />
           ))}
         </div>
-      </div>
-      <div className={styles.original}>
-        <div className={styles.heading}>
-          <h2>元の文章</h2>
-        </div>
+      </Panel>
+      <Panel title="原文" tone="original" className={styles.original}>
         <div className={styles.text}>
           {paragraphs.map((paragraph) => (
             <ParagraphView
@@ -90,7 +84,7 @@ export function ResultView({ id, result, isStale, actions }: ResultViewProps) {
             />
           ))}
         </div>
-      </div>
+      </Panel>
     </section>
   );
 }
