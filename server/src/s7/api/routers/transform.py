@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 
-from s7.api.dependencies import Services, get_services
+from s7.api.dependencies import Services, get_services, transform_char_limit
 from s7.api.schemas.errors import ErrorResponse
 from s7.api.schemas.transform import (
     ConceptRefSchema,
@@ -39,6 +39,7 @@ _ERRORS = {
     response_model_exclude_unset=True,
     responses=_ERRORS,  # type: ignore[arg-type]
     summary="文章中の名詞を、辞書のN個先の語に置き換える",
+    dependencies=[Depends(transform_char_limit)],
 )
 def transform(
     body: TransformRequest,

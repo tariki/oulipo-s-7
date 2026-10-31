@@ -11,15 +11,21 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from s7.adapters.sudachi_tokenizer import SudachiTokenizer
 from s7.api.dependencies import Services
 from s7.api.error_handlers import register_error_handlers
+from s7.api.middleware.body_size_limit import BodySizeLimitMiddleware
 from s7.api.middleware.internal_error import InternalErrorMiddleware
+from s7.api.middleware.rate_limiter import RateLimiter, RateLimitMiddleware
 from s7.api.middleware.request_logging import RequestLoggingMiddleware
+from s7.api.middleware.security_headers import SecurityHeadersMiddleware
 from s7.api.middleware.startup_gate import StartupGateMiddleware
 from s7.api.openapi_description import DESCRIPTION
-from s7.api.routers import health, meta, senses, transform
+from s7.api.routers import events, health, meta, senses, transform
+from s7.api.static_files import SpaStaticFiles, has_built_web
 from s7.config import Settings, load_settings
 from s7.logging_config import configure_logging, log_app, log_error
 from s7.repositories.dictionary_repository import DictionaryRepository
@@ -84,14 +90,39 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.ready = ready
+    app.state.rate_limiter = RateLimiter()
     register_error_handlers(app)
-    for router in (health.router, transform.router, senses.router, meta.router):
+    for router in (health.router, transform.router, senses.router, meta.router, events.router):
         app.include_router(router)
-    # 後に足したものほど外側になる。機能設計書「ミドルウェアと処理の順番」の内側から順に足す
-    app.add_middleware(InternalErrorMiddleware)
-    app.add_middleware(StartupGateMiddleware, is_ready=ready.is_set)
-    app.add_middleware(RequestLoggingMiddleware)
+    # 画面はビルド済みのときだけ配信する(開発中は Vite の開発サーバーが配信する)。
+    # ルーターより後に足し、どのルーターにも当たらないパスだけを受け持つ
+    if has_built_web(resolved.static_dir):
+        app.mount("/", SpaStaticFiles(resolved.static_dir))
+    _add_middlewares(app, resolved, ready)
     return app
+
+
+def _add_middlewares(app: FastAPI, settings: Settings, ready: threading.Event) -> None:
+    """機能設計書「ミドルウェアと処理の順番」の内側から順に足す(後に足したものほど外側)。"""
+    app.add_middleware(InternalErrorMiddleware)
+    app.add_middleware(
+        RateLimitMiddleware,
+        limiter=app.state.rate_limiter,
+        trusted_proxy_hops=settings.trusted_proxy_hops,
+    )
+    app.add_middleware(StartupGateMiddleware, is_ready=ready.is_set)
+    app.add_middleware(BodySizeLimitMiddleware)
+    app.add_middleware(RequestLoggingMiddleware)
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-S7-Client"],
+        expose_headers=["Retry-After"],
+        max_age=86400,
+    )
 
 
 def _load(

@@ -84,3 +84,12 @@ def client(make_app: Callable[..., FastAPI]) -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         assert app.state.ready.wait(timeout=5)
         yield test_client
+
+
+def failing_load(_: Settings) -> Services:
+    """読み込みが終わらない状態(503のまま)を作るための、必ず失敗する読み込み。"""
+    raise RuntimeError("テスト用の読み込みの失敗")
+
+
+def ignore_failure(_: BaseException) -> None:
+    """読み込みの失敗を無視する(プロセスを終えない)。"""

@@ -4,6 +4,7 @@
 エラーコード(error_code)と、変換の mode・n・文字数(transform_log)を含める。
 """
 
+import re
 import time
 from typing import Final
 
@@ -13,6 +14,13 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from s7.logging_config import log_request
 
 _LOGGED_PREFIX: Final = "/api/v1/"
+# ログに出すパス。それ以外の /api/v1/ のパス(存在しないパス)は、利用者が自由に書けるため丸める
+_KNOWN_PATHS: Final = frozenset(
+    {"/api/v1/transform", "/api/v1/senses", "/api/v1/meta", "/api/v1/events"}
+)
+_UNKNOWN_PATH: Final = "/api/v1/*"
+# X-S7-Client は利用者が自由に書けるため、短い英数字の値だけをログに出す(ほかは null)
+_CLIENT_PATTERN: Final = re.compile(r"[A-Za-z0-9._-]{1,32}")
 _INTERNAL_ERROR_STATUS: Final = 500
 
 
@@ -39,10 +47,10 @@ class RequestLoggingMiddleware:
             transform_log = state.get("transform_log") or {}
             log_request(
                 method=scope["method"],
-                path=scope["path"],
+                path=scope["path"] if scope["path"] in _KNOWN_PATHS else _UNKNOWN_PATH,
                 status=status,
                 duration_ms=round((time.perf_counter() - started_at) * 1000),
-                client=Headers(scope=scope).get("x-s7-client"),
+                client=_client_label(Headers(scope=scope).get("x-s7-client")),
                 error_code=state.get("error_code"),
                 mode=transform_log.get("mode"),
                 n=transform_log.get("n"),
@@ -64,3 +72,10 @@ class RequestLoggingMiddleware:
         finally:
             if not logged:
                 log()
+
+
+def _client_label(value: str | None) -> str | None:
+    """X-S7-Client の値。形式に合わなければ None(本文などを書き込まれてもログに出さない)。"""
+    if value is not None and _CLIENT_PATTERN.fullmatch(value):
+        return value
+    return None

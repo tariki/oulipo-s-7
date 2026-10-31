@@ -71,3 +71,28 @@ def test_non_api_paths_are_not_logged_as_request(
     client.get("/healthz")
 
     assert [e for e in _entries(capsys) if e["kind"] == "request"] == []
+
+
+@pytest.mark.parametrize(
+    ("header", "logged"),
+    [("web", "web"), ("my-cli_1.0", "my-cli_1.0"), ("吾輩は猫である", None), ("x" * 33, None)],
+)
+def test_client_header_is_logged_only_when_well_formed(
+    capsys: pytest.CaptureFixture[str], client: TestClient, header: str, logged: str | None
+) -> None:
+    """X-S7-Client は利用者が自由に書けるため、短い英数字の値だけをログに出す。"""
+    client.get("/api/v1/meta", headers={b"X-S7-Client": header.encode()})
+
+    [request] = [e for e in _entries(capsys) if e["kind"] == "request"]
+    assert request["client"] == logged
+
+
+def test_unknown_api_path_is_logged_as_wildcard(
+    capsys: pytest.CaptureFixture[str], client: TestClient
+) -> None:
+    """存在しないAPIのパスは利用者が自由に書けるため、丸めて出す。"""
+    response = client.get("/api/v1/猫の手紙")
+
+    assert response.status_code == 404
+    [request] = [e for e in _entries(capsys) if e["kind"] == "request"]
+    assert (request["path"], request["status"]) == ("/api/v1/*", 404)

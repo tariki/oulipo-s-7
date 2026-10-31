@@ -8,6 +8,9 @@ from dataclasses import dataclass
 
 from fastapi import Request
 
+from s7.api.middleware.rate_limiter import RateLimiter
+from s7.api.schemas.transform import TransformRequest
+from s7.domain.errors import RateLimitedError
 from s7.services.meta_service import MetaService
 from s7.services.sense_service import SenseService
 from s7.services.transform_service import TransformService
@@ -29,3 +32,20 @@ def get_services(request: Request) -> Services:
         # StartupGate を通っているため起きない。起きたら組み立ての誤り(500になる)
         raise RuntimeError("services are not loaded")
     return services
+
+
+def transform_char_limit(body: TransformRequest, request: Request) -> None:
+    """文字数の利用制限。入力検証の後に判定するため、ミドルウェアではなく依存関数にする。
+
+    Raises:
+        RateLimitedError: 直近60秒間の文字数の合計が上限を超えるとき(今回の分は加えない)。
+    """
+    limiter: RateLimiter = request.app.state.rate_limiter
+    key: str | None = getattr(request.state, "rate_limit_key", None)
+    if key is None:
+        # 回数の利用制限(RateLimitMiddleware)を通っていない。対象のパスの設定の誤りで、
+        # 文字数の制限が黙って無効にならないよう500にする
+        raise RuntimeError("rate limit key is missing")
+    retry_after = limiter.check_chars(key, len(body.text))
+    if retry_after is not None:
+        raise RateLimitedError(retry_after)
