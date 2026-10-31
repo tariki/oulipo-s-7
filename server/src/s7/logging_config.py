@@ -42,7 +42,7 @@ def configure_logging(log_format: LogFormat, log_level: Severity) -> None:
         log_format: json(1行1つのJSON)か text(手元で読みやすい形式)。
         log_level: 出力する最低の重要度。
     """
-    handler = logging.StreamHandler(sys.stdout)
+    handler = _StdoutHandler()
     handler.setFormatter(JsonFormatter() if log_format == "json" else TextFormatter())
 
     root = logging.getLogger()
@@ -72,12 +72,94 @@ def log_app(message: str, *, severity: Severity = "INFO", **fields: FieldValue) 
     _emit("app", severity, message, fields)
 
 
-def _emit(kind: Kind, severity: Severity, message: str, fields: Mapping[str, FieldValue]) -> None:
+def log_request(  # noqa: PLR0913  ログの形式の項目をそのまま名前つきで受け取る
+    *,
+    method: str,
+    path: str,
+    status: int,
+    duration_ms: int,
+    client: str | None,
+    error_code: str | None,
+    mode: str | None = None,
+    n: int | None = None,
+    chars: int | None = None,
+) -> None:
+    """`kind = request` の行を出す(`/api/v1/*` の呼び出しごとに1行)。
+
+    Args:
+        method: HTTPメソッド。
+        path: パス。クエリ文字列は含めない(見出し語が入るため)。
+        status: HTTPステータス。
+        duration_ms: 処理時間(ミリ秒)。
+        client: `X-S7-Client` の値。無ければNone。
+        error_code: エラーのときのコード。
+        mode: 変換のモード(`/api/v1/transform` のみ)。
+        n: 変換のN(同上)。
+        chars: 文章の文字数(同上。本文は出さない)。
+    """
+    fields: dict[str, FieldValue] = {
+        "method": method,
+        "path": path,
+        "status": status,
+        "duration_ms": duration_ms,
+        "client": client,
+        "error_code": error_code,
+    }
+    if mode is not None:
+        fields.update(mode=mode, n=n, chars=chars)
+    _emit("request", "INFO", f"{method} {path} {status}", fields)
+
+
+def log_event(event: Mapping[str, FieldValue]) -> None:
+    """`kind = analytics` の行を出す。受け付けたイベントの項目を `event` の下に入れる。
+
+    Args:
+        event: 検証済みのイベントの項目(キーはAPIと同じcamelCase)。
+    """
+    _emit("analytics", "INFO", "analytics event", {}, nested={"event": dict(event)})
+
+
+def log_error(message: str, error: BaseException) -> None:
+    """`kind = app`・`ERROR` の行を出す。例外のクラス名と場所だけを出し、メッセージは出さない。
+
+    Args:
+        message: 人が読む説明。本文や見出し語を含めない。
+        error: 起きた例外。
+    """
+    _LOGGER.error(
+        message,
+        exc_info=(type(error), error, error.__traceback__),
+        extra={_KIND_ATTR: "app", _FIELDS_ATTR: {}},
+    )
+
+
+def _emit(
+    kind: Kind,
+    severity: Severity,
+    message: str,
+    fields: Mapping[str, FieldValue],
+    nested: Mapping[str, Mapping[str, FieldValue]] | None = None,
+) -> None:
+    entry: dict[str, object] = {_to_camel(k): v for k, v in fields.items()}
+    entry.update(nested or {})
     _LOGGER.log(
         _SEVERITY_LEVELS[severity],
         message,
-        extra={_KIND_ATTR: kind, _FIELDS_ATTR: {_to_camel(k): v for k, v in fields.items()}},
+        extra={_KIND_ATTR: kind, _FIELDS_ATTR: entry},
     )
+
+
+class _StdoutHandler(logging.StreamHandler):  # type: ignore[type-arg]
+    """書き込むたびに、その時点の sys.stdout に出す。
+
+    作った時点の sys.stdout に結び付けると、標準出力が差し替えられたとき
+    (テストの出力の取り込みなど)に、閉じた出力へ書いて失敗するため。
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """その時点の標準出力に1件を書く。"""
+        self.stream = sys.stdout
+        super().emit(record)
 
 
 class JsonFormatter(logging.Formatter):

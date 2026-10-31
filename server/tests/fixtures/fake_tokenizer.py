@@ -67,3 +67,27 @@ class FakeTokenizer:
             Morpheme(surface, surface, part, _POS["noun"], is_oov=False)
             for surface, part in zip(surfaces, parts, strict=True)
         ]
+
+
+class WordListTokenizer:
+    """決まった語の一覧で、どんな文章も区切る(APIの統合テスト用)。
+
+    先頭から、一覧の語のうち最も長く一致するものを普通名詞の形態素にし、
+    一致しなければ1文字を助詞の形態素にする。表記をつなげると元の文章に戻る。
+    """
+
+    def __init__(self, words: Sequence[str]) -> None:
+        self._words = sorted(set(words), key=len, reverse=True)
+
+    def tokenize(self, text: str, mode: SplitMode) -> list[Morpheme]:
+        morphemes: list[Morpheme] = []
+        position = 0
+        while position < len(text):
+            word = next((w for w in self._words if text.startswith(w, position)), None)
+            if word is None:
+                morphemes.append(morpheme(text[position], "particle"))
+                position += 1
+            else:
+                morphemes.append(morpheme(word))
+                position += len(word)
+        return morphemes

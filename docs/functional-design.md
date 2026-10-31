@@ -5,6 +5,7 @@
 > 2026-10-24: 機能設計書のレビュー(3.5/5)の指摘を反映。あわせて、読みが決まらない見出し語も概念版では置き換えに使うように変更した。
 > 2026-10-25: 用語集・開発ガイドラインのレビューに合わせ、`INVALID_REQUEST` の条件と画面遷移図(確認中からの自動変換、20秒の数え始め)を補った。
 > 2026-10-25: リポジトリ構造定義書のレビューに合わせ、`Morpheme` の置き場所、ミドルウェアの処理順(セキュリティヘッダー・gzip・リクエストログ)、画面のフックと部品、標準の文章の置き場所(`data/standard-texts/`)を更新した。
+> 2026-10-31: APIの実装に合わせ、ミドルウェアの実装の注意(素のASGI、`InternalErrorMiddleware`、ログを出す時点、静的ファイル)、ErrorHandler の `HTTPException` の扱い、`NounSegment` の省略できる項目の出し方を追記した。
 > 2026-10-31: 変換の処理の実装に合わせ、中間の型(置換経路、`ConceptRef`、`ConceptShift`、`SenseChoice`)、`ConceptShifter.select_sense`、`TransformService` のコンストラクタ、`DictionaryRepository` の読み込みと整合性の検査を追記した。
 > 2026-10-31: 辞書ビルダーの実装に合わせ、`Morpheme`(`reading_form`・`is_oov`)と `Tokenizer` の分割モード、`built_at` の値、定義文のつなぎ方、読みの決定(記号の仮の読み「キゴウ」を使わない、検査の範囲)、読みの付与率(97.5%)を更新した。
 
@@ -447,7 +448,7 @@ def get_meta() -> MetaResponse: ...
 
 #### ミドルウェアと処理の順番
 
-リクエストは、次の順に処理する(外側から内側へ)。どの段階で返した応答にも、1のCORSヘッダーと2のセキュリティヘッダーが付く。`/api/v1/*` では、どの段階で返しても4のリクエストログが出る。
+リクエストは、次の順に処理する(外側から内側へ)。どの段階で返した応答にも、1のCORSヘッダーと2のセキュリティヘッダーが付く。`/api/v1/*` では、どの段階で返しても4のリクエストログが出る。ただし、プリフライト(`OPTIONS`)は1のCORSが応答するため、2のヘッダーは付かず、リクエストログも出ない(本文を持たない応答で、利用制限でも数えない)。
 
 1. **CORS**: すべての応答にCORSヘッダーを付け、プリフライト(`OPTIONS`)に応答する(「API設計」の共通事項)
 2. **SecurityHeaders**: CSPなどのヘッダーと、パスごとの `Cache-Control` を付ける(`docs/architecture.md`「HTTPヘッダー」)
@@ -459,6 +460,12 @@ def get_meta() -> MetaResponse: ...
 8. **入力検証**(Pydantic): 400
 9. **RateLimiter(文字数)**: `POST /api/v1/transform` だけ。`text` の文字数を数え、枠を超えたら429(入力検証の後に行うため、ミドルウェアではなくルーターの依存関数で判定する)
 10. **ルーターとサービス**
+
+実装の注意(`server/src/s7/app.py`):
+- ミドルウェアはStarletteの `BaseHTTPMiddleware` ではなく、素のASGIミドルウェアで書く。段階の間の受け渡しは `scope["state"]`(`request.state` と同じ辞書)で行う(`error_code`、変換の `transform_log`、接続元の `rate_limit_key`)
+- 7と8の間に、想定外の例外を500(`INTERNAL_ERROR`)にする `InternalErrorMiddleware` を置く。Starletteの `ServerErrorMiddleware` は最も外側にあり、そこで作った500にはCORSヘッダーもリクエストログも付かないため
+- RequestLoggingは、応答の最後の本文を送る直前に1行出す(送った後だと、利用者が応答を受け取った後にログが出て、順番がずれる)
+- 画面の静的ファイルは、ルーターに当たらなかったパスだけを受け持つ(`/` にマウントする)。`/api/` で始まるパスは静的配信に回さない
 
 #### RateLimiter
 
@@ -487,6 +494,9 @@ def get_meta() -> MetaResponse: ...
 #### ErrorHandler
 
 **責務**: すべてのエラーを「エラーレスポンス」の形式にそろえる。FastAPI標準の入力検証エラー(422)も400に変換する
+
+- FastAPIは、本文をJSONとして読めない(文字コードが不正など)ときに400の `HTTPException` を投げる。これも `INVALID_REQUEST` にそろえる。存在しないパスの404・405はFastAPIの既定(`{"detail": ...}`)のまま返す(エラーコードの一覧に無いため)
+- `NounSegment` の `lemma`・`synsetId`・`route` は、値があるときだけ入れる(応答は `response_model_exclude_unset=True`)
 
 ### サービスレイヤー
 
@@ -1281,7 +1291,7 @@ FastAPIが生成するOpenAPIをもとに表示する。自動生成だけでは
 }
 ```
 
-(置換後の語と概念IDは説明用の架空の例。`synsetId` は元の語「猫」の語義。「吾輩」は代名詞のため対象外。`attribution` の正式な文言は、各ライセンス文をもとに `docs/architecture.md` で確定する)
+(置換後の語と概念IDは説明用の架空の例。`synsetId` は元の語「猫」の語義。「吾輩」は代名詞のため対象外。`attribution` の正式な文言は `docs/architecture.md`「ライセンスとクレジット」)
 
 **エラーレスポンス**:
 - 400 Bad Request: 入力の不備(下記のエラーコード)
@@ -1472,10 +1482,10 @@ PC(幅768px以上)                       スマートフォン(幅768px未満)
 
 | 項目 | 型 | 内容 |
 |------|-----|------|
-| `method`、`path` | string | クエリ文字列は含めない(見出し語が入るため) |
+| `method`、`path` | string | クエリ文字列は含めない(見出し語が入るため)。存在しないAPIのパスは、利用者が自由に書けるため `/api/v1/*` に丸める |
 | `status` | number | HTTPステータス |
 | `durationMs` | number | 処理時間 |
-| `client` | string \| null | `X-S7-Client` の値(`web` など)。無ければnull |
+| `client` | string \| null | `X-S7-Client` の値(`web` など)。無い、または英数字と `.`・`_`・`-` の32文字以内でなければnull(利用者が自由に書けるため) |
 | `mode`、`n`、`chars` | string、number、number | `/api/v1/transform` のみ。`chars` は文字数(本文は出さない) |
 | `errorCode` | string \| null | エラーのときのコード |
 

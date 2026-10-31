@@ -45,3 +45,14 @@ class DictionaryIntegrityError(Exception):
         """
         super().__init__(f"{kind} {identifier} が変換用辞書にありません")
         self.identifier = identifier
+
+
+class RateLimitedError(DomainError):
+    """利用制限を超えた。retry_after は再試行までの秒数(Retry-After に入れる)。"""
+
+    code = "RATE_LIMITED"
+
+    def __init__(self, retry_after: int) -> None:
+        """再試行までの秒数を受け取る。"""
+        super().__init__(f"retry after {retry_after}s")
+        self.retry_after = retry_after

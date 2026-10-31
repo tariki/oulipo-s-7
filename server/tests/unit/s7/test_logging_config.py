@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from s7.logging_config import configure_logging, log_app
+from s7.logging_config import configure_logging, log_app, log_error, log_event, log_request
 
 ISO_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")
 
@@ -175,3 +175,81 @@ def test_exception_logs_type_and_stack_without_message(capsys: pytest.CaptureFix
     assert entry["exceptionType"] == "ValueError"
     assert isinstance(entry["stack"], list)
     assert entry["stack"]
+
+
+def test_log_request_has_request_fields(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging("json", "INFO")
+
+    log_request(
+        method="POST",
+        path="/api/v1/transform",
+        status=200,
+        duration_ms=12,
+        client="web",
+        error_code=None,
+        mode="gojuon",
+        n=7,
+        chars=120,
+    )
+
+    [entry] = read_json_lines(capsys)
+    assert entry["kind"] == "request"
+    assert {k: entry[k] for k in ("method", "path", "status", "durationMs", "client")} == {
+        "method": "POST",
+        "path": "/api/v1/transform",
+        "status": 200,
+        "durationMs": 12,
+        "client": "web",
+    }
+    assert (entry["errorCode"], entry["mode"], entry["n"], entry["chars"]) == (
+        None,
+        "gojuon",
+        7,
+        120,
+    )
+
+
+def test_log_request_without_transform_fields(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging("json", "INFO")
+
+    log_request(
+        method="GET",
+        path="/api/v1/meta",
+        status=503,
+        duration_ms=0,
+        client=None,
+        error_code="SERVICE_STARTING",
+    )
+
+    [entry] = read_json_lines(capsys)
+    assert entry["errorCode"] == "SERVICE_STARTING"
+    assert "mode" not in entry
+
+
+def test_log_event_nests_event_fields(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging("json", "INFO")
+
+    log_event({"event": "copy", "pageViewId": "7f3a9c2e5b1d4a60", "transformSeq": 2})
+
+    [entry] = read_json_lines(capsys)
+    assert entry["kind"] == "analytics"
+    assert entry["event"] == {"event": "copy", "pageViewId": "7f3a9c2e5b1d4a60", "transformSeq": 2}
+
+
+def test_log_error_outputs_type_and_stack_without_message(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    configure_logging("json", "INFO")
+    try:
+        raise ValueError("本文を含むメッセージ")
+    except ValueError as error:
+        log_error("想定外のエラー", error)
+
+    [entry] = read_json_lines(capsys)
+    assert (entry["kind"], entry["severity"], entry["exceptionType"]) == (
+        "app",
+        "ERROR",
+        "ValueError",
+    )
+    assert entry["stack"]
+    assert "本文を含む" not in json.dumps(entry, ensure_ascii=False)

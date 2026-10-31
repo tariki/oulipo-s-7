@@ -35,7 +35,8 @@ members = list({s for s in candidates})
 |----------|-------------------------------|------|
 | `api/middleware/request_logging.py` | `log_request` | `kind = request` の行。`/api/v1/*` の呼び出しごとに1行(機能設計書「ログの形式」の項目) |
 | `api/routers/events.py` | `log_event` | `kind = analytics` の行 |
-| `api/error_handlers.py` | `log_error` | 500のときの `kind = app`・`ERROR` の行。例外のクラス名と識別子だけ |
+| `api/middleware/internal_error.py` | `log_error` | 500のときの `kind = app`・`ERROR` の行。例外のクラス名と場所(ファイル名と行)だけ |
+| `app.py` | `log_error` | 辞書の読み込みに失敗したときの `ERROR` の行(同上) |
 | `app.py` | `log_app` | 起動、辞書の読み込み完了などの `kind = app` の行 |
 | `api/middleware/rate_limiter.py` | `log_app` | 接続元を取れなかったときの `WARNING`(architecture.md「利用制限」) |
 
@@ -55,7 +56,7 @@ return JSONResponse({"detail": exc.errors()})       # 検証エラーの input �
 - `services/`・`repositories/`・`adapters/`・`domain/` はログを出さない(`logging_config.py` に依存しない。`docs/repository-structure.md`「依存関係のルール」)
 - `print` と `logging` の直接の使用はRuffで禁止する(`T20`、`TID251`。`logging_config.py` だけを例外にする)
 - 例外のメッセージに本文や名詞を入れない。入れてよいのは文字数、`nounIndex`、概念IDなどの数値・識別子だけ。`log_error` も `str(exc)` を出さない
-- **検証エラー**: `error_handlers.py` は、Pydanticのエラーの `type` と `loc` だけを使ってエラーコードを決める(下の「入力検証とエラーコード」)。`input`・`msg`・`ctx` は応答にもログにも使わない
+- **検証エラー**: `error_handlers.py` は、Pydanticのエラーの `type` と `loc` だけを使ってエラーコードを決める(下の「入力検証とエラーコード」)。`input`・`msg`・`ctx` は応答にもログにも使わない。例外は `TEXT_TOO_LONG` の `details.actualChars` で、`input` の文字数(数値)だけを使う
 - **Uvicornのアクセスログ**: 止める(`access_log=False`)。クエリ文字列(`?lemma=...`)をそのまま出すため。Uvicorn自身のエラーログは `logging_config.py` でJSON形式にそろえる
 - ログの形式は `S7_LOG_FORMAT`(`json` / `text`)、出す重要度は `S7_LOG_LEVEL` で切り替える(architecture.md「環境変数」)
 - 統合テスト `test_logging_format.py` で、標準出力に出る行がすべて構造化ログの形式であり、本文と見出し語を含まないことを確かめる
