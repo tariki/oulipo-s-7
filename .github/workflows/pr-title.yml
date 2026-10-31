@@ -1,0 +1,26 @@
+# プルリクエストのタイトルの形式を確かめる。squash merge でタイトルが main のコミットの件名になるため
+# (docs/development-guidelines.md「マージ方針」)。タイトルの編集でも動くよう ci.yml と分けている。
+name: pr-title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: プルリクエストのタイトルの形式(squash mergeでコミットの件名になる)
+        env:
+          # タイトルを式で直接埋め込むと、シェルに解釈されうるため環境変数で渡す
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # type と scope は docs/development-guidelines.md「コミットメッセージ」の表
+          pattern='^(feat|fix|perf|refactor|test|docs|build|ci|chore)(\((api|service|repo|builder|dict|web|infra|scripts)\))?: .+$'
+          if [[ ! "$TITLE" =~ $pattern ]]; then
+            echo "::error::タイトルを '<type>(<scope>): <件名>' の形式にしてください(例: feat(service): 概念版S+Nを追加)"
+            exit 1
+          fi

@@ -1,0 +1,59 @@
+# 依存関係の更新(docs/development-guidelines.md「依存関係の更新」)。週1回、groups でまとめる。
+# groups は minor・patch だけをまとめる。メジャーバージョンの更新はグループから外れ、
+# 1つずつ別のプルリクエストになる(React・Vite・FastAPI・Pydantic などを個別に判断するため)。
+# プルリクエストのタイトルは ci.yml の形式の検査(<type>: <件名>)に合わせ、commit-message で
+# build(依存関係)・ci(GitHub Actions)を付ける。scope の deps は使わない。
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /server
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    ignore:
+      # 変換結果が変わるため、辞書のバージョンを上げる手順で手動で更新する
+      - dependency-name: sudachipy
+      - dependency-name: sudachidict-core
+    groups:
+      runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+      dev:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+    ignore:
+      # 上げないと決めたもの(docs/architecture.md「テクノロジースタック」)。
+      # TypeScript は typescript-eslint の対応範囲(6.1未満)、ESLint は eslint-plugin-react・jsx-a11y の対応待ち
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
+    groups:
+      runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+      dev:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  # Dockerfile はまだ無い。作ったら package-ecosystem: docker を足す(docs/repository-structure.md「Dockerfile」)
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]

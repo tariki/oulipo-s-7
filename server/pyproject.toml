@@ -1,0 +1,173 @@
+[project]
+name = "s7"
+version = "0.1.0"
+description = "S+7メーカー: 文章中の名詞を辞書のN個先の語に置き換えるAPIサーバーと辞書ビルダー"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "fastapi>=0.143",
+  "pydantic>=2.14",
+  "uvicorn>=0.54",
+  # 変換結果が変わるため完全に固定する(docs/architecture.md「依存関係管理」)
+  "sudachipy==0.7.0",
+  "sudachidict-core==20261015",
+]
+
+[dependency-groups]
+dev = [
+  "httpx2>=2.9",
+  "import-linter>=2.5",
+  "mypy>=1.18",
+  "pip-audit>=2.9",
+  "pytest>=8.4",
+  "pytest-cov>=7.0",
+  "ruff>=0.14",
+]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["s7", "s7builder"]
+
+# --- Ruff(docs/development-guidelines.md「ツールと設定」) ---
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF", "PT", "S", "T20", "TID", "D", "C90", "PLR"]
+ignore = [
+  # 全角の句読点や長音を、まぎらわしい文字として報告するため
+  "RUF001",
+  "RUF002",
+  "RUF003",
+  # 日本語のdocstringは「。」で終えるため
+  "D415",
+  # __init__.py は空にする(docs/repository-structure.md)ため、パッケージのdocstringを求めない
+  "D104",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# TID251: テストはログの形式を確かめるため logging を直接使う
+"tests/**" = ["S101", "D", "PLR2004", "TID251"]
+"src/s7/logging_config.py" = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"logging".msg = "ログは s7.logging_config の関数で出す(docs/development-guidelines.md「入力文を残さない」)"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-statements = 30
+# Ruffは self を引数の数に含めないため、5で「self を除いて5個まで」になる
+max-args = 5
+
+[tool.ruff.format]
+quote-style = "double"
+
+# --- mypy ---
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+mypy_path = ["src", "tests"]
+# tests/ には __init__.py を置かないため、ディレクトリを基準にモジュール名を決める
+explicit_package_bases = true
+
+# --- pytest(docs/development-guidelines.md「pytestの設定」) ---
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib", "--strict-markers", "-m", "not snapshot and not performance"]
+pythonpath = ["tests"]
+testpaths = ["tests"]
+markers = [
+  "sudachi: 本物のSudachiを使う(SudachiDict-coreがあれば動く)",
+  "snapshot: 本物の変換用辞書が必要",
+  "performance: 本物の変換用辞書が必要。時間を測る",
+]
+
+[tool.coverage.run]
+# パッケージ名ではなくディレクトリを指定し、どのテストも取り込まないモジュールも0%として数える
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+
+# --- import-linter(docs/repository-structure.md「依存関係のルール」) ---
+# import-linter は、契約で名指ししたモジュールが無いとエラーにする。
+# まだ無いモジュール(adapters.sudachi_tokenizer、s7builder.quality_report など)を名指しする契約は、
+# そのモジュールを作る作業で足す。
+# forbidden 契約は直接の取り込みだけを禁止する(allow_indirect_imports)。既定のままだと、
+# api → services → repositories のような設計どおりの経路まで違反になるため。
+# 層をまたぐ間接的な依存は layers 契約で確かめる。
+
+[tool.importlinter]
+root_packages = ["s7", "s7builder"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "サーバーのレイヤーは上から下にだけ依存する"
+type = "layers"
+layers = [
+  "s7.api",
+  "s7.services",
+  "s7.repositories | s7.adapters",
+  "s7.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "s7 は s7builder に依存しない"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["s7"]
+forbidden_modules = ["s7builder"]
+
+[[tool.importlinter.contracts]]
+name = "設定とログを使ってよいのは app と api だけ"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["s7.services", "s7.repositories", "s7.adapters", "s7.domain"]
+forbidden_modules = ["s7.config", "s7.logging_config"]
+
+[[tool.importlinter.contracts]]
+name = "api は repositories と adapters を使わない"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["s7.api"]
+forbidden_modules = ["s7.repositories", "s7.adapters"]
+
+[[tool.importlinter.contracts]]
+name = "app 以外は app に依存しない"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["s7.api", "s7.services", "s7.repositories", "s7.adapters", "s7.domain", "s7builder"]
+forbidden_modules = ["s7.app"]
+
+[[tool.importlinter.contracts]]
+name = "services と repositories は外部のWebフレームワークに依存しない"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["s7.services", "s7.repositories"]
+forbidden_modules = ["fastapi", "starlette", "pydantic"]
+
+[[tool.importlinter.contracts]]
+name = "domain は外部ライブラリに依存しない"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["s7.domain"]
+forbidden_modules = ["fastapi", "starlette", "pydantic", "sudachipy", "uvicorn"]
+
+[[tool.importlinter.contracts]]
+name = "辞書ビルダーは api と config を使わない"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = ["s7builder"]
+forbidden_modules = ["s7.api", "s7.config"]

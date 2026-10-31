@@ -446,7 +446,8 @@ deploy/                        # ホスティング先の決定後に作る
 
 .github/
 ├── workflows/
-│   ├── ci.yml                 # プルリクエスト: リント、型チェック、依存の向きの検査、ユニット・統合テスト(sudachiを含む)、脆弱性の検査、画面のビルド、APIの型とライセンス一覧の差分確認、PRタイトルの形式。辞書に関わるファイルを変えたときだけ辞書ビルド・報告の一致・スナップショットも
+│   ├── ci.yml                 # プルリクエスト: リント、型チェック、依存の向きの検査、ユニット・統合テスト(sudachiを含む)、脆弱性の検査、画面のビルド、APIの型とライセンス一覧の差分確認。辞書に関わるファイルを変えたときだけ辞書ビルド・報告の一致・スナップショットも
+│   ├── pr-title.yml           # プルリクエストのタイトルの形式(タイトルの編集でも動く。ci.yml を走り直させないため分ける)
 │   └── main.yml               # mainへのマージ: ci.yml の内容に加えて、辞書ビルド、報告の一致の確認、スナップショット、性能、E2E(内容はarchitecture.md「CI/CD」)
 ├── pull_request_template.md   # 内容は開発ガイドラインの「プルリクエスト」
 ├── ISSUE_TEMPLATE/
@@ -650,8 +651,14 @@ pages/ ─┬─→ hooks/ ──────┬──→ api/(ApiClient)
 
 ### .devcontainer/
 
-- Python 3.13(uv付き)とNode.js 24を入れる(決定済み)
+```
+.devcontainer/
+├── devcontainer.json        # features(Python 3.13・uv・Node.js 24)、ポート、拡張機能、メモリの要件
+└── post-create.sh           # 作成時に1回だけ実行: ShellCheckの導入と依存関係のインストール
+```
+
 - `wnjpn.db` からのビルドのため、Dockerに4GB以上のメモリを割り当てる(architecture.md)
+- `post-create.sh` もShellCheckの対象にする(`scripts/check.sh`)
 
 ## 除外設定
 
