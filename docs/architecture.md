@@ -6,6 +6,7 @@
 > 2026-10-24: アーキテクチャ設計書のレビュー(3.6/5)の指摘を反映。「可用性と運用」「リスクと技術的負債」の節を追加し、機能設計書の改訂(品質の報告、ミドルウェアの処理順、CORSなど)に合わせた。
 > 2026-10-25: リポジトリ構造定義書のレビューに合わせ、処理の順番、CIのワークフロー名(`main.yml`)、コンテナのビルドの入力、標準の文章の置き場所を更新した。
 > 2026-10-31: 辞書ビルダーの実装時に、Dev Containerで「設計前の検証結果」を計測し直した(読みの付与率、兄弟グループ、変換用辞書の大きさとビルド時間)。
+> 2026-10-31: 画面の実装に合わせ、開発ツール(APIの型の生成、ライセンス一覧の作り方)と、`main.yml` の現状(E2Eだけ)を追記した。
 > 2026-10-31: APIの実装に合わせ、出典の文言、辞書の読み込みの失敗の扱い、CSPを付けるパスを確定した。
 > 2026-10-31: 変換の処理の実装時に、Sudachiの初期化、変換用辞書の読み込み、変換の時間を計測し直した。Sudachiの `Tokenizer` はスレッドごとに作ると決めた。
 
@@ -85,10 +86,12 @@
 | pip-audit、npm audit | 依存関係の既知の脆弱性の検査 | CIで自動で確かめる |
 | ShellCheck | `scripts/` のシェルスクリプトの検査 | `set -euo pipefail` 以外の誤りも見つける |
 | `@axe-core/playwright` | E2Eでのアクセシビリティの自動検査 | WCAG 2.2 AAの機械的に確かめられる部分を毎回見る |
+| openapi-typescript | サーバーのOpenAPI仕様から画面のAPIの型を生成する(`scripts/generate-api-types.sh`) | 手書きの型とサーバーのずれを防ぐ。型だけを作り、実行時の依存関係を増やさない |
+| (自前のスクリプト) | 依存ライブラリのライセンス一覧(`scripts/generate-licenses.sh`) | Pythonは `importlib.metadata`、npmは `npm ls` と各パッケージの `package.json` から作る。一覧のためだけに依存関係を増やさない |
 | Dev Container | 開発環境 | Python・Node.js・Claude Codeを同じ環境で揃える(決定済み) |
 | GitHub Actions | CI/CD | テスト、辞書のビルド、コンテナのビルドとデプロイ |
 
-> バージョンは実装開始時(2026-10-25、土台の作業)に決めた。公開から2週間以上たった版から選び(`uv lock --exclude-newer`、`npm install --before`)、正確な版はロックファイル(`server/uv.lock`、`web/package-lock.json`)にある。ESLintは、eslint-plugin-react と eslint-plugin-jsx-a11y がESLint 10に未対応のため9系にしている。
+> バージョンは実装開始時(2026-10-25、土台の作業)に決めた。画面の作業(2026-10-31)で openapi-typescript 7.13、Playwright 1.64、`@axe-core/playwright` 4.14 を足した。公開から2週間以上たった版から選び(`uv lock --exclude-newer`、`npm install --before`)、正確な版はロックファイル(`server/uv.lock`、`web/package-lock.json`)にある。ESLintは、eslint-plugin-react と eslint-plugin-jsx-a11y がESLint 10に未対応のため9系にしている。
 
 ## アーキテクチャパターン
 
@@ -422,8 +425,8 @@ graph LR
 
 | タイミング | ワークフロー | 内容 |
 |------------|--------------|------|
-| プルリクエスト | `ci.yml` | Python: Ruff、mypy、import-linter、pytest(ユニット・統合。小さな辞書と本物のSudachi)、pip-audit。画面: ESLint(ディレクトリ間の依存の検査を含む)、型チェック、Vitest、ビルド、npm audit。APIの型とライセンス一覧を生成し直して差分が無いことの確認 |
-| mainへのマージ | `main.yml` | 上記に加えて、本物の辞書のビルド、品質の報告の生成(`scripts/check-reports.sh`。コミット済みの `build-report.json`・`quality-report.json` と一致することを確かめ、更新忘れを見つける)、スナップショットテスト、性能テスト(サーバー)、E2Eテスト |
+| プルリクエスト | `ci.yml` | Python: Ruff、mypy、import-linter、pytest(ユニット・統合。小さな辞書と本物のSudachi)、pip-audit。画面: ESLint(ディレクトリ間の依存の検査を含む)、型チェック、Vitest、ビルド、npm audit。APIの型とライセンス一覧を生成し直して差分が無いことの確認(ジョブ `generated`) |
+| mainへのマージ | `main.yml` | 上記に加えて、本物の辞書のビルド、品質の報告の生成(`scripts/check-reports.sh`。コミット済みの `build-report.json`・`quality-report.json` と一致することを確かめ、更新忘れを見つける)、スナップショットテスト、性能テスト(サーバー)、E2Eテスト。**いまはE2Eテストだけ**(PC幅のChromium・WebKit、スマートフォン幅360px。APIはモックで返す)。辞書のビルド以降は品質の報告の作業で足す |
 | `main.yml` の成功後 | `deploy.yml`(ホスティング先の決定後に作る) | コンテナのビルドとデプロイ(「デプロイの確認と戻し方」) |
 
 - 依存関係の脆弱性の検査は、Pythonは実行時の依存関係に既知の脆弱性が1つでもあれば、画面は深刻度が高(high)以上があれば失敗させる(`pip-audit` は深刻度で絞れないため。詳細は開発ガイドライン「依存関係の更新」)

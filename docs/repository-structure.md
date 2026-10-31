@@ -292,8 +292,10 @@ web/
 │   ├── App.tsx                    # ルーティング(/、/about)
 │   ├── pages/
 │   │   ├── TransformPage.tsx      # 変換画面。フックと部品をつなぎ、解析のイベントを送る
-│   │   └── AboutPage.tsx          # このアプリについて(機能設計書「『このアプリについて』の構成」)
+│   │   ├── AboutPage.tsx          # このアプリについて(機能設計書「『このアプリについて』の構成」)
+│   │   └── messages.ts            # エラーの表示の文言(機能設計書「エラーの分類」)
 │   ├── hooks/
+│   │   ├── apiClientContext.tsx   # 画面が使う ApiClient の受け渡し(pages/ は api/ を直接取り込めないため。テストで差し替える)
 │   │   ├── useServerReadiness.ts  # 準備中の確認(checking・starting)、meta の再試行、20秒の上限
 │   │   └── useTransform.ts        # TransformState、保持した変換操作と破棄、503後の再試行、除外と語義の指定
 │   ├── components/
@@ -343,11 +345,13 @@ web/
     │   │   └── joinSegments.test.ts
     │   └── about/
     │       └── parseDictionaryHistory.test.ts
-    └── e2e/                       # Playwright。ユーザーシナリオ単位
+    ├── unit/support/fakeApi.ts    # ApiClient の偽物と、変換の結果の例
+    └── e2e/                       # Playwright。ユーザーシナリオ単位(APIは fixtures/api.ts の page.route のモックで返す)
         ├── transform-flow.spec.ts
         ├── input-limit.spec.ts
         ├── keyboard.spec.ts
         ├── cold-start.spec.ts     # 準備中(503を返すモック)の表示と、保持した変換の自動実行
+        ├── accessibility.spec.ts  # axe(入力待ち、結果表示、エラー、このアプリについて)
         └── performance.spec.ts
 ```
 
@@ -434,8 +438,8 @@ licenses/
 | `build-dictionary.sh` | `s7builder build` と `s7builder quality` を実行し、`data/build/s7dict.sqlite` と2つの報告を作る(`quality` は品質の報告の作業で足す。いまは `build` だけ) |
 | `check-reports.sh` | 2つの報告(`build-report.json`・`quality-report.json`)を作り直し、コミット済みのものと一致するかを確かめる(CIで使う) |
 | `export-openapi.py` | サーバーのOpenAPI仕様をJSONで出力する(サーバーを起動せずに) |
-| `generate-api-types.sh` | `export-openapi.py` の出力から `web/src/api/generated/schema.d.ts` を作る |
-| `generate-licenses.sh` | Python(実行時の依存関係のみ)とnpm(画面に含まれる依存関係のみ)のライセンス一覧を `licenses/generated/` に作る。使うツールは実装時に決め、architecture.mdの「開発ツール」に加える |
+| `generate-api-types.sh` | `export-openapi.py` の出力から、openapi-typescript で `web/src/api/generated/schema.d.ts` を作る |
+| `generate-licenses.sh` | Python(実行時の依存関係のみ)とnpm(画面に含まれる依存関係のみ)のライセンス一覧と、各パッケージのライセンスファイル(LICENSE・NOTICEなど)の全文を `licenses/generated/` に作る。中で `list-python-licenses.py`(`importlib.metadata`)と `list-npm-licenses.mjs`(各パッケージの `package.json`)を使う |
 | `dev.sh` | 開発時にサーバー(Uvicorn)と画面(Viteの開発サーバー)を同時に起動する |
 | `check.sh` | リント、整形の確認、型チェック、依存の向きの検査、ユニット・統合テストとカバレッジ、画面のビルド、ShellCheckをまとめて実行する(内容は開発ガイドライン「手元で確かめることとCI」) |
 
@@ -464,7 +468,7 @@ deploy/                        # ホスティング先の決定後に作る
 ├── workflows/
 │   ├── ci.yml                 # プルリクエスト: リント、型チェック、依存の向きの検査、ユニット・統合テスト(sudachiを含む)、脆弱性の検査、画面のビルド、APIの型とライセンス一覧の差分確認。辞書に関わるファイルを変えたときだけ辞書ビルド・報告の一致・スナップショットも
 │   ├── pr-title.yml           # プルリクエストのタイトルの形式(タイトルの編集でも動く。ci.yml を走り直させないため分ける)
-│   └── main.yml               # mainへのマージ: ci.yml の内容に加えて、辞書ビルド、報告の一致の確認、スナップショット、性能、E2E(内容はarchitecture.md「CI/CD」)
+│   └── main.yml               # mainへのマージ: ci.yml の内容に加えて、辞書ビルド、報告の一致の確認、スナップショット、性能、E2E(内容はarchitecture.md「CI/CD」。いまはE2Eだけ)
 ├── pull_request_template.md   # 内容は開発ガイドラインの「プルリクエスト」
 ├── ISSUE_TEMPLATE/
 │   └── excluded-word-report.yml  # 不適切な語の報告用(PRDの「除外リストの公開前の完了条件」)
