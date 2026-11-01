@@ -42,4 +42,20 @@ describe('AboutPage', () => {
       expect.stringContaining('template=excluded-word-report.yml') as string,
     );
   });
+
+  it('ソースコードがMITライセンスであることと、GitHubへのリンクを表示する', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <AboutPage />
+      </MemoryRouter>,
+    );
+
+    expect(container.querySelector('#credits')).toHaveTextContent(
+      'このアプリのソースコードは、MITライセンスでGitHubに公開しています。',
+    );
+    expect(screen.getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/tariki/oulipo-s-7',
+    );
+  });
 });

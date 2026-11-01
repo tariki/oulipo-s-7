@@ -480,6 +480,7 @@ CORSの詳細は機能設計書「API設計」の共通事項。
 
 | データ・ソフトウェア | ライセンス | 対応 |
 |----------------------|------------|------|
+| このアプリ(リポジトリのソースコードと文書) | MIT License(Copyright (c) 2026 Tomohiko Ariki) | 全文をリポジトリ直下の `LICENSE` に置く。`web/package.json`・`server/pyproject.toml` の `license` にも書く。下の辞書データと依存ライブラリは対象外で、それぞれのライセンスに従う(README と「このアプリについて」に書く) |
 | 日本語WordNet 1.1 | NICTの日本語WordNetライセンス(いかなる目的でも無償で使用・複製・改変・頒布可。著作権表示とライセンス文を全コピーに残す。NICTの名称を宣伝に使わない) | ライセンス文の全文を `licenses/` に置き、「このアプリについて」とAPI仕様書に掲載する。変換用辞書にもライセンス文を含める |
 | SudachiDict | Apache License 2.0(UniDic、NEologdの一部を含む) | 同上。NOTICEの内容も掲載する |
 | SudachiPy | Apache License 2.0 | 同上 |
