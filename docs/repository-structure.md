@@ -61,6 +61,7 @@ server/src/s7/
 │   │   ├── senses.py              # GET /api/v1/senses?lemma=... [P1: F8]
 │   │   ├── meta.py                # GET /api/v1/meta
 │   │   ├── events.py              # POST /api/v1/events(解析用)
+│   │   ├── docs.py                # GET /api/docs(Swagger UI に画面と同じ見出しの帯を付ける)
 │   │   └── health.py              # GET /healthz
 │   ├── schemas/                   # Pydanticのリクエスト・レスポンスの型(キー名はcamelCase)
 │   │   ├── base.py                # CamelModel(キー名をcamelCaseに変換する共通の基底クラス)
