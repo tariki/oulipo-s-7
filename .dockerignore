@@ -1,0 +1,26 @@
+# イメージのビルドに使うファイルだけを送る(許可の一覧)。
+# 新しいファイルが黙ってイメージに入らないよう、まずすべてを除外してから足す。
+# 各ステージで使うファイルは docs/repository-structure.md「Dockerfile」。
+*
+
+# 1. 画面
+!web/
+!licenses/
+!data/dictionary-history.md
+
+# 2. 辞書・3. 実行用
+!server/pyproject.toml
+!server/uv.lock
+!server/src/
+!data/wnjpn.db.sha256
+!data/excluded-lemmas.txt
+!scripts/fetch-wordnet.sh
+
+# 足した中から、手元で作られるものを除く
+web/node_modules
+web/dist
+web/coverage
+web/playwright-report
+web/test-results
+**/__pycache__
+**/.DS_Store

@@ -446,6 +446,7 @@ licenses/
 | `generate-api-types.sh` | `export-openapi.py` の出力から、openapi-typescript で `web/src/api/generated/schema.d.ts` を作る |
 | `generate-licenses.sh` | Python(実行時の依存関係のみ)とnpm(画面に含まれる依存関係のみ)のライセンス一覧と、各パッケージのライセンスファイル(LICENSE・NOTICEなど)の全文を `licenses/generated/` に作る。中で `list-python-licenses.py`(`importlib.metadata`)と `list-npm-licenses.mjs`(各パッケージの `package.json`)を使う |
 | `dev.sh` | 開発時にサーバー(Uvicorn)と画面(Viteの開発サーバー)を同時に起動する |
+| `smoke-test-image.sh` | Dockerのイメージを起動し、`PORT` での待ち受け、辞書の読み込み後の変換、画面のCSP、root以外での実行、要らないもの(`wnjpn.db`・Node.js・辞書ビルダー・uv)が無いこと、1GB以下を確かめる(`docker.yml` と、Dockerのあるホスト側で使う) |
 | `check.sh` | リント、整形の確認、型チェック、依存の向きの検査、ユニット・統合テストとカバレッジ、画面のビルド、ShellCheckをまとめて実行する(内容は開発ガイドライン「手元で確かめることとCI」) |
 
 **命名規則**: Pythonのファイルも含めてkebab-case(取り込まずにコマンドとして実行するだけのため)
@@ -473,6 +474,7 @@ deploy/                        # ホスティング先の決定後に作る
 ├── workflows/
 │   ├── ci.yml                 # プルリクエスト: リント、型チェック、依存の向きの検査、ユニット・統合テスト(sudachiを含む)、脆弱性の検査、画面のビルド、APIの型とライセンス一覧の差分確認。辞書に関わるファイルを変えたときだけ辞書ビルド・報告の一致・スナップショットも
 │   ├── pr-title.yml           # プルリクエストのタイトルの形式(タイトルの編集でも動く。ci.yml を走り直させないため分ける)
+│   ├── docker.yml             # Dockerのイメージのビルドと起動の確認(scripts/smoke-test-image.sh)。mainへのマージ、イメージの中身に関わるファイルを変えたプルリクエスト、手動実行のときだけ
 │   └── main.yml               # mainへのマージ: ci.yml の内容に加えて、辞書ビルド、報告の一致の確認、スナップショット、性能、E2E(内容はarchitecture.md「CI/CD」。いまはE2Eだけ)
 ├── pull_request_template.md   # 内容は開発ガイドラインの「プルリクエスト」
 ├── ISSUE_TEMPLATE/
@@ -488,12 +490,15 @@ architecture.mdのマルチステージビルドに対応する。リポジト�
 
 | ステージ | 取り込むもの | すること | 出力 |
 |----------|--------------|----------|------|
-| 1. 画面(node:24) | `web/`(`node_modules` を除く)、`licenses/`(`generated/` を含む)、`data/dictionary-history.md` | `npm ci`、`npm run build` | `web/dist/` |
-| 2. 辞書(python:3.13) | `server/pyproject.toml`、`server/uv.lock`、`server/src/`、`data/wnjpn.db.sha256`、`data/excluded-lemmas.txt`、`licenses/wordnet-ja.txt`、`scripts/fetch-wordnet.sh` | `uv sync --frozen --no-dev`、`fetch-wordnet.sh`、`python -m s7builder build`(品質の報告は作らない。CIの `main.yml` で作る) | `s7dict.sqlite` |
-| 3. 実行用(python:3.13-slim) | `server/pyproject.toml`、`server/uv.lock`、`server/src/s7/`、ステージ1・2の出力 | `uv sync --frozen --no-dev --no-install-project`(SudachiPy・SudachiDict-core・FastAPIなどの依存関係だけを入れる)。`s7/` だけをコピーし、`PYTHONPATH` で読み込む | 実行用イメージ |
+| 0. `uv`(ghcr.io/astral-sh/uv) | なし | uv のバイナリを渡すだけ。ステージ2・3が `RUN --mount=from=uv` で使い、実行用イメージには入れない | なし |
+| 1. `web`(node:24) | `web/`(`node_modules` を除く)、`licenses/`(`generated/` を含む)、`data/dictionary-history.md` | `npm ci`、`npm run build` | `web/dist/` |
+| 2. `dictionary`(python:3.13) | `server/pyproject.toml`、`server/uv.lock`、`server/src/`、`data/wnjpn.db.sha256`、`data/excluded-lemmas.txt`、`licenses/wordnet-ja.txt`、`scripts/fetch-wordnet.sh` | `uv sync --frozen --no-dev`、`fetch-wordnet.sh`、`python -m s7builder build`(品質の報告は作らない。CIの `main.yml` で作る) | `s7dict.sqlite` |
+| 3. `runtime`(python:3.13-slim) | `server/pyproject.toml`、`server/uv.lock`、`server/src/s7/`、ステージ1・2の出力 | `uv sync --frozen --no-dev --no-install-project`(SudachiPy・SudachiDict-core・FastAPIなどの依存関係だけを入れる)。`s7/` だけをコピーし、`PYTHONPATH` で読み込む | 実行用イメージ |
 
 - 実行用ステージには `s7builder/`、`tests/`、`wnjpn.db`、Node.js、開発用の依存関係を入れない。辞書ビルダーはパッケージとして入れず、ソースもコピーしない
 - 実行用ステージでは `S7_DICTIONARY_PATH`・`S7_STATIC_DIR` を `ENV` で絶対パスにする
+- 各ステージはリポジトリと同じ配置(`/app/web`、`/app/server` など)にし、スクリプトや辞書ビルダーのリポジトリ直下からの相対パスがそのまま使えるようにする
+- 実行ユーザーは `s7`(UID 10001)。ファイルの持ち主は root のまま(書き込ませない)。`CMD` はシェルで `PORT` を展開し、`exec` で uvicorn を PID 1 にする(停止のシグナルを直接受けるため)
 - `.dockerignore` の内容は「除外設定」の1か所にまとめる
 
 ### docs/ (ドキュメントディレクトリ)
@@ -719,28 +724,32 @@ data/build/*
 
 ### .dockerignore
 
-`.dockerignore` の内容はここだけで定める。`node_modules` などはサブディレクトリにもあるため、`**/` を付ける(付けないとビルドの起点の直下にしか効かない)。
+`.dockerignore` の内容はここだけで定める。まずすべてを除外し、上の「Dockerfile」の各ステージで取り込むものだけを足す(許可の一覧)。新しいファイルを足したときに、黙ってイメージに入らないようにするため。足した中から、手元で作られるものを改めて除く(`__pycache__` はサブディレクトリにもあるため `**/` を付ける)。
 
 ```
-**/node_modules
-**/.venv
-**/__pycache__
-**/.mypy_cache
-**/.ruff_cache
-**/.pytest_cache
+*
+
+# 1. 画面
+!web/
+!licenses/
+!data/dictionary-history.md
+
+# 2. 辞書・3. 実行用
+!server/pyproject.toml
+!server/uv.lock
+!server/src/
+!data/wnjpn.db.sha256
+!data/excluded-lemmas.txt
+!scripts/fetch-wordnet.sh
+
+# 足した中から、手元で作られるものを除く
+web/node_modules
 web/dist
 web/coverage
 web/playwright-report
 web/test-results
-data/source
-data/build
-docs
-.steering
-.claude
-.devcontainer
-.github
-.git
-.env
+**/__pycache__
+**/.DS_Store
 ```
 
 ### ツールの除外
