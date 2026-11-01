@@ -854,6 +854,7 @@ scripts/dev.sh
 | ライセンス一覧を作り直す | `scripts/generate-licenses.sh` |
 | 報告がコミット済みのものと一致するか確かめる | `scripts/check-reports.sh` |
 | コンテナを手元でビルド | `docker build -t s7-maker .`(ホスト側で実行する。Dev Containerの中にはDockerが無い) |
+| ビルドしたイメージを起動して確かめる | `scripts/smoke-test-image.sh s7-maker`(ホスト側。CIでは `docker.yml` が同じことをする) |
 
 - Pythonのツールは `uv run --directory server` で実行する(作業ディレクトリが `server/` になり、`server/pyproject.toml` の設定が読まれる。`--project` は作業ディレクトリを変えないため使わない)
 - `--directory server` の中では、パスの基準が `server/` になる。テストのパスは `tests/...` と書き、`data/` などリポジトリ直下のファイルは `../data/...` か絶対パスで渡す

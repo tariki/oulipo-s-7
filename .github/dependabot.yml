@@ -71,3 +71,23 @@ updates:
       actions:
         patterns: ["*"]
         update-types: [minor, patch]
+
+  # Dockerfile のベースイメージ(タグとダイジェストの両方を更新する)
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: build
+    ignore:
+      # Python は pyproject.toml の requires-python(3.13)、Node.js は LTS の 24 に合わせる
+      - dependency-name: python
+        versions: [">=3.14"]
+      - dependency-name: node
+        versions: [">=25"]
+    groups:
+      images:
+        patterns: ["*"]
+        update-types: [minor, patch]

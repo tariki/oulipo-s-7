@@ -1,0 +1,40 @@
+# Dockerのイメージをビルドし、起動して確かめる(scripts/smoke-test-image.sh)。
+# 日本語WordNetの取得と辞書のビルドを含み数分かかるため、すべてのプルリクエストでは動かさない。
+# mainへのマージ、イメージの中身に関わるファイルを変えたプルリクエスト、手動実行のときだけ。
+# パスで絞っているため、ルールセットの必須チェックには入れない(docs/architecture.md「CI/CD」)。
+# イメージの push とデプロイは、ホスティング先の決定後に deploy.yml で行う。
+name: docker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - server/pyproject.toml
+      - server/uv.lock
+      - web/package.json
+      - web/package-lock.json
+      - scripts/fetch-wordnet.sh
+      - scripts/smoke-test-image.sh
+      - .github/workflows/docker.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: イメージをビルドする
+        run: docker build -t s7-maker:ci .
+      - name: 起動して確かめる
+        run: scripts/smoke-test-image.sh s7-maker:ci

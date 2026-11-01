@@ -312,7 +312,7 @@ graph LR
 |------|------|------|
 | 開発サーバー | 普段の開発 | Uvicorn(`--reload`)でAPI、Viteの開発サーバーで画面を起動する(`scripts/dev.sh`)。Viteが `/api` をUvicornへ中継するため、画面とAPIは同じオリジンに見える |
 | 本番と同じ構成 | 公開前の確認 | 画面をビルドし、Uvicorn1つでAPIと静的ファイルを配信する(本番と同じ形)。コールドスタート時の準備中の画面もこれで確かめる |
-| コンテナ | 任意(ホスティング先の決定後) | Dockerfileでイメージを作って動かす。Dev ContainerにはDockerが入っていないため、ホスト側で行う |
+| コンテナ | 任意 | Dockerfileでイメージを作って動かす(`docker build -t s7-maker .`、`docker run -p 8000:8000 s7-maker`)。Dev ContainerにはDockerが入っていないため、ホスト側で行う。CIでは `docker.yml` が確かめる |
 
 ### アプリが守ること
 
@@ -417,9 +417,11 @@ graph LR
 
 - 各ステージで取り込むファイルと `.dockerignore` は `docs/repository-structure.md`「Dockerfile」「除外設定」
 
-- 実行用のイメージには、`wnjpn.db`、Node.js、辞書ビルダー、開発用の依存関係を入れない
+- 実行用のイメージには、`wnjpn.db`、Node.js、辞書ビルダー、開発用の依存関係、uv を入れない
 - 実行ユーザーはroot以外にする
 - ベースイメージは、タグとダイジェスト(`@sha256:...`)の両方で固定する。更新はDependabot(Dockerの更新)のプルリクエストで行う
+- 版: `node:24.22.1-trixie-slim`、`python:3.13.17-trixie`、`python:3.13.17-slim-trixie`、`ghcr.io/astral-sh/uv:0.13.1`(uv は公開から2週間以上たった版)。Dependabot は Python を3.13、Node.js を24に留める
+- 確認: `.github/workflows/docker.yml` がイメージをビルドし、`scripts/smoke-test-image.sh` で起動して確かめる(`PORT` での待ち受け、辞書の読み込み後の変換、画面のCSP、root以外での実行、要らないものが無いこと、1GB以下)。Dev ContainerにはDockerが無いため、イメージの確認はCIで行う(Dockerのあるホスト側でも同じスクリプトを使える)
 
 ### CI/CD(GitHub Actions)
 
@@ -427,6 +429,7 @@ graph LR
 |------------|--------------|------|
 | プルリクエスト | `ci.yml` | Python: Ruff、mypy、import-linter、pytest(ユニット・統合。小さな辞書と本物のSudachi)、pip-audit。画面: ESLint(ディレクトリ間の依存の検査を含む)、型チェック、Vitest、ビルド、npm audit。APIの型とライセンス一覧を生成し直して差分が無いことの確認(ジョブ `generated`) |
 | mainへのマージ | `main.yml` | 上記に加えて、本物の辞書のビルド、品質の報告の生成(`scripts/check-reports.sh`。コミット済みの `build-report.json`・`quality-report.json` と一致することを確かめ、更新忘れを見つける)、スナップショットテスト、性能テスト(サーバー)、E2Eテスト。**いまはE2Eテストだけ**(PC幅のChromium・WebKit、スマートフォン幅360px。APIはモックで返す)。辞書のビルド以降は品質の報告の作業で足す |
+| mainへのマージ、イメージの中身に関わるファイル(`Dockerfile`・`.dockerignore`・依存関係のファイルなど)を変えたプルリクエスト、手動実行 | `docker.yml` | イメージのビルドと起動の確認(上の「コンテナのビルド」)。数分かかるため、すべてのプルリクエストでは動かさない。パスで絞るため、ルールセットの必須チェックには入れない |
 | `main.yml` の成功後 | `deploy.yml`(ホスティング先の決定後に作る) | コンテナのビルドとデプロイ(「デプロイの確認と戻し方」) |
 
 - 依存関係の脆弱性の検査は、Pythonは実行時の依存関係に既知の脆弱性が1つでもあれば、画面は深刻度が高(high)以上があれば失敗させる(`pip-audit` は深刻度で絞れないため。詳細は開発ガイドライン「依存関係の更新」)
