@@ -24,7 +24,7 @@ from s7.api.middleware.request_logging import RequestLoggingMiddleware
 from s7.api.middleware.security_headers import SecurityHeadersMiddleware
 from s7.api.middleware.startup_gate import StartupGateMiddleware
 from s7.api.openapi_description import DESCRIPTION
-from s7.api.routers import events, health, meta, senses, transform
+from s7.api.routers import docs, events, health, meta, senses, transform
 from s7.api.static_files import SpaStaticFiles, has_built_web
 from s7.config import Settings, load_settings
 from s7.logging_config import configure_logging, log_app, log_error
@@ -84,7 +84,8 @@ def create_app(
         title="S+7メーカー API",
         description=DESCRIPTION,
         version="1",
-        docs_url="/api/docs",
+        # API仕様書は画面と同じ見出しの帯を付けるため、routers/docs.py が返す
+        docs_url=None,
         redoc_url=None,
         openapi_url="/api/openapi.json",
         lifespan=lifespan,
@@ -92,7 +93,14 @@ def create_app(
     app.state.ready = ready
     app.state.rate_limiter = RateLimiter()
     register_error_handlers(app)
-    for router in (health.router, transform.router, senses.router, meta.router, events.router):
+    for router in (
+        health.router,
+        transform.router,
+        senses.router,
+        meta.router,
+        events.router,
+        docs.router,
+    ):
         app.include_router(router)
     # 画面はビルド済みのときだけ配信する(開発中は Vite の開発サーバーが配信する)。
     # ルーターより後に足し、どのルーターにも当たらないパスだけを受け持つ

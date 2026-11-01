@@ -1255,6 +1255,7 @@ FastAPIが生成するOpenAPIをもとに表示する。自動生成だけでは
 
 - `POST /api/v1/events` は「画面専用の解析用。外部からの利用は想定しない」と説明に書く
 - `/healthz` はAPI仕様書に載せない
+- 画面と同じ見出しの帯(「S+7」とメニュー)を、Swagger UI の上に付ける(`s7/api/routers/docs.py`)。API仕様書から変換画面・「このアプリについて」へ移れるようにするため。色と形は画面の `tokens.css`・`SiteHeader` と同じにする
 
 ### POST /api/v1/transform
 
