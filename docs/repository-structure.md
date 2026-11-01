@@ -28,7 +28,7 @@ oulipo-s-7/
 ├── deploy/                    # ホスティング先の設定(ホスティング先の決定後に作る。候補: Cloud Run)
 ├── .github/                   # GitHub Actions、Dependabot、テンプレート
 ├── .devcontainer/             # 開発環境(Dev Container)
-├── docs/                      # 永続ドキュメント
+├── docs/                      # 永続ドキュメント(images/ は README の画面の画像)
 ├── .steering/                 # 作業単位のドキュメント(Git管理外)
 ├── .claude/                   # Claude Codeの設定
 ├── Dockerfile                 # マルチステージビルド(画面・辞書・実行用)
@@ -36,7 +36,8 @@ oulipo-s-7/
 ├── .env.example               # 実行時の設定(環境変数)の見本。既定値で動くため任意
 ├── .gitignore
 ├── CLAUDE.md
-└── README.md                  # 概要、セットアップ手順(開発ガイドラインへのリンク)、ライセンスとクレジット
+├── LICENSE                    # このアプリのライセンス(MIT)。辞書データと依存ライブラリは licenses/ のとおり
+└── README.md                  # 概要、画面の画像、APIの例、セットアップ手順(開発ガイドラインへのリンク)、ライセンスとクレジット
 ```
 
 **`server/` と `web/` に分ける理由**:

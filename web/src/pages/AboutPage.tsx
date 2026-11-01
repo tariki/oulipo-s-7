@@ -3,9 +3,11 @@ import { DICTIONARY_HISTORY, LICENSE_TEXTS } from '../about/sources';
 import { SiteHeader } from '../components/SiteHeader';
 import styles from './AboutPage.module.css';
 
+/** ソースコードの置き場所(MITライセンス)。 */
+const REPOSITORY_URL = 'https://github.com/tariki/oulipo-s-7';
+
 /** 不適切な語の報告の窓口(GitHubのIssueのテンプレート)。 */
-const REPORT_URL =
-  'https://github.com/tariki/oulipo-s-7/issues/new?template=excluded-word-report.yml';
+const REPORT_URL = `${REPOSITORY_URL}/issues/new?template=excluded-word-report.yml`;
 
 /** このアプリについて(機能設計書「『このアプリについて』の構成」)。 */
 export function AboutPage() {
@@ -86,6 +88,11 @@ export function AboutPage() {
 
         <section id="credits" aria-labelledby="credits-heading">
           <h2 id="credits-heading">出典とライセンス</h2>
+          <p>
+            このアプリのソースコードは、MITライセンスで
+            <a href={REPOSITORY_URL}>GitHub</a>
+            に公開しています。辞書データとライブラリは、それぞれのライセンスに従います。
+          </p>
           <p>
             このアプリは、日本語WordNet 1.1(© NICT ほか)、SudachiDict と SudachiPy(© Works
             Applications Co., Ltd.、Apache License
