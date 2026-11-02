@@ -642,6 +642,16 @@ Closes #14
 ❌ この並べ方はダメです。
 ```
 
+### リリース
+
+- **版の付け方**: セマンティック バージョニング。0.x の間は、機能の追加でマイナー(0.1.0 → 0.2.0)、不具合の修正だけならパッチを上げる。変換用辞書のバージョン(`YYYY.MM.patch`)と Web API のバージョン(`/api/v1`)は別に管理する
+- **手順**:
+  1. `chore/release-v[版]` ブランチで、`CHANGELOG.md` に新しい版の節(追加・変更・修正。関係するプルリクエストの番号)と比較のリンクを足し、版を上げる(`web/package.json`・`web/package-lock.json`・`server/pyproject.toml`・`server/uv.lock`。`npm install --package-lock-only` と `uv lock --directory server` で作り直す)
+  2. プルリクエストを出し、マージする
+  3. マージ後に `main` で動いたワークフローがすべて通ったことを確かめてから、マージのコミットに注釈付きのタグ `v[版]` を付けてプッシュする
+  4. `gh release create v[版] --verify-tag` で GitHub の Release を作る。本文は `CHANGELOG.md` のその版の節
+- リリースは公開(デプロイ)とは別。デプロイはホスティング先の決定後に `deploy.yml` で行う
+
 ## テスト戦略
 
 網羅すべき項目は機能設計書「テスト戦略」とarchitecture.md「テスト戦略」が正。ここでは道具と書き方を決める。
