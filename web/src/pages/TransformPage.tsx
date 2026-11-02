@@ -154,15 +154,26 @@ export function TransformPage() {
   }, [selected]);
 
   // 面を閉じたら、選んでいた語にフォーカスを戻す
+  // 変換し直している間に閉じたら、新しい結果で作り直された語にもう一度フォーカスを戻す
+  const focusAfterResult = useRef<number | null>(null);
   const handleCloseDetail = useCallback(() => {
     const index = selectedIndex;
     setSelection(null);
     if (index !== null) {
-      document
-        .querySelector<HTMLElement>(`#${RESULT_ID} [data-noun-index="${String(index)}"]`)
-        ?.focus();
+      focusAfterResult.current = isLoading ? index : null;
+      focusToken(index);
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, isLoading]);
+  useEffect(() => {
+    const index = focusAfterResult.current;
+    if (index === null || state.status === 'loading') {
+      return;
+    }
+    focusAfterResult.current = null;
+    if (state.status === 'success' && document.activeElement === document.body) {
+      focusToken(index);
+    }
+  }, [state.status, result]);
 
   const { toggleExclusion, overrideSense } = transform;
   const handleToggleExclusion = useCallback(() => {
@@ -249,6 +260,13 @@ export function TransformPage() {
       </main>
     </div>
   );
+}
+
+/** 結果の中の nounIndex の語にフォーカスを移す(無ければ何もしない)。 */
+function focusToken(nounIndex: number) {
+  document
+    .querySelector<HTMLElement>(`#${RESULT_ID} [data-noun-index="${String(nounIndex)}"]`)
+    ?.focus();
 }
 
 /** 選んだ語。辞書の版も覚える(版が変わると nounIndex が別の名詞を指しうるため)。 */

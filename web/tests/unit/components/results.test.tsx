@@ -163,6 +163,22 @@ describe('ResultView', () => {
     expect(tabStops).toHaveLength(1);
   });
 
+  it('新しい結果では変換後の語を作り直す(WebKit が書き換えただけの段落を描き直さないため)', () => {
+    const first = transformResponse();
+    const { rerender } = render(
+      <ResultView id="result" result={first} isStale={false} isSelectable />,
+    );
+    const before = screen.getByRole('button', { name: '獅子、元の語は猫' });
+
+    // 同じ結果で描き直しても作り直さない
+    rerender(<ResultView id="result" result={first} isStale={false} isSelectable />);
+    expect(screen.getByRole('button', { name: '獅子、元の語は猫' })).toBe(before);
+
+    // 中身が同じでも新しい結果なら作り直す
+    rerender(<ResultView id="result" result={transformResponse()} isStale={false} isSelectable />);
+    expect(screen.getByRole('button', { name: '獅子、元の語は猫' })).not.toBe(before);
+  });
+
   it('古い結果は語を選べない', () => {
     render(<ResultView id="result" result={transformResponse()} isStale isSelectable={false} />);
 

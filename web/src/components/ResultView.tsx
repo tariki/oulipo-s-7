@@ -25,6 +25,23 @@ interface ResultViewProps {
 const TOKEN_SELECTOR = '[data-noun-token]';
 
 /**
+ * 結果ごとの通し番号(段落の key に使う)。新しい結果では変換後の段落を作り直す。
+ * WebKit は content-visibility: auto の段落の中の語を書き換えただけでは描き直さないことがあり、
+ * 変換し直した結果が空に見えたため(Safari。E2E の desktop-webkit で確認)。
+ */
+const generations = new WeakMap<TransformResponse, number>();
+let nextGeneration = 0;
+function generationOf(result: TransformResponse): number {
+  let generation = generations.get(result);
+  if (generation === undefined) {
+    generation = nextGeneration;
+    nextGeneration += 1;
+    generations.set(result, generation);
+  }
+  return generation;
+}
+
+/**
  * 原文と変換後の文章を、それぞれ色の面に並べて表示する(PCは左右、スマートフォンは変換後が先)。
  * 変換後の語は、Tabキーでは1回で入り、中では左右の矢印キーで移る(ロービングタブインデックス)。
  */
@@ -37,6 +54,7 @@ export function ResultView({
   onSelectToken,
 }: ResultViewProps) {
   const paragraphs = useMemo(() => splitParagraphs(result.segments), [result]);
+  const generation = generationOf(result);
   const replacedRef = useRef<HTMLDivElement>(null);
 
   // 最初の語だけを Tab で入れるようにする(1万語あっても Tab で結果を通り過ぎられるように)。
@@ -77,7 +95,7 @@ export function ResultView({
         <div ref={replacedRef} className={styles.text}>
           {paragraphs.map((paragraph) => (
             <ParagraphView
-              key={paragraph.index}
+              key={`${String(generation)}-${String(paragraph.index)}`}
               paragraph={paragraph}
               side="replaced"
               isSelectable={isSelectable}
