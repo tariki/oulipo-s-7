@@ -24,7 +24,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
       - name: WebKit のE2E(すべて、やり直しなし)
-        run: npx playwright test --project=desktop-webkit --retries=0 --reporter=list
+        run: |
+          npx playwright test --project=desktop-webkit --retries=0 --reporter=list
+          npx playwright test tests/e2e/word-detail.spec.ts tests/e2e/transform-flow.spec.ts tests/e2e/keyboard.spec.ts --project=desktop-webkit --retries=0 --repeat-each=5 --reporter=dot
         env:
           CI: "true"
       - uses: actions/upload-artifact@v7

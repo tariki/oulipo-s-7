@@ -154,26 +154,15 @@ export function TransformPage() {
   }, [selected]);
 
   // 面を閉じたら、選んでいた語にフォーカスを戻す
-  // 変換し直している間に閉じたら、新しい結果で作り直された語にもう一度フォーカスを戻す
-  const focusAfterResult = useRef<number | null>(null);
+  // 閉じたら選んでいた語へフォーカスを戻す(変換し直している間なら、新しい結果で作り直された
+  // 同じ語へは ResultView が戻す)
   const handleCloseDetail = useCallback(() => {
     const index = selectedIndex;
     setSelection(null);
     if (index !== null) {
-      focusAfterResult.current = isLoading ? index : null;
       focusToken(index);
     }
-  }, [selectedIndex, isLoading]);
-  useEffect(() => {
-    const index = focusAfterResult.current;
-    if (index === null || state.status === 'loading') {
-      return;
-    }
-    focusAfterResult.current = null;
-    if (state.status === 'success' && document.activeElement === document.body) {
-      focusToken(index);
-    }
-  }, [state.status, result]);
+  }, [selectedIndex]);
 
   const { toggleExclusion, overrideSense } = transform;
   const handleToggleExclusion = useCallback(() => {
