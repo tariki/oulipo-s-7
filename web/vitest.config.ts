@@ -9,6 +9,10 @@ export default mergeConfig(
       environment: 'jsdom',
       include: ['tests/unit/**/*.test.{ts,tsx}'],
       setupFiles: ['tests/setup.ts'],
+      // カバレッジつきで全ファイルを並行に動かすと、各ファイルの最初のテスト(jsdom の用意と画面の
+      // 取り込みを含む)が既定の5秒を超えることがある(Dev Container で計測)。遅いテストを隠さないよう、
+      // 待つ上限だけを広げる
+      testTimeout: 15_000,
       coverage: {
         provider: 'v8',
         include: ['src/**/*.{ts,tsx}'],

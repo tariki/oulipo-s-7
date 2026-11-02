@@ -45,6 +45,24 @@ describe('NounToken', () => {
     expect(screen.getByRole('button')).toHaveTextContent('猫');
   });
 
+  it('選ぶ(クリック)と onSelect に nounIndex を渡す', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(
+      <NounToken
+        segment={{ ...noun('replaced'), nounIndex: 3 }}
+        isSelectable
+        onSelect={onSelect}
+      />,
+    );
+
+    const button = screen.getByRole('button');
+    await user.click(button);
+
+    expect(onSelect).toHaveBeenCalledWith(3);
+    expect(button).toHaveAttribute('data-noun-index', '3');
+  });
+
   it('選ぶと元の語の説明を開き、Esc で閉じる', async () => {
     const user = userEvent.setup();
     render(<NounToken segment={noun('replaced')} isSelectable />);
@@ -99,7 +117,7 @@ function resultWith(...nouns: string[]): TransformResponse {
 
 describe('ResultView', () => {
   it('原文と変換後の文章を表示する', () => {
-    render(<ResultView id="result" result={transformResponse()} isStale={false} />);
+    render(<ResultView id="result" result={transformResponse()} isStale={false} isSelectable />);
 
     expect(screen.getByRole('heading', { name: '変換後' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '原文' })).toBeInTheDocument();
@@ -109,7 +127,9 @@ describe('ResultView', () => {
 
   it('Tab では最初の語に入り、左右の矢印キーで語を移る', async () => {
     const user = userEvent.setup();
-    render(<ResultView id="result" result={resultWith('猫', '犬', '鳥')} isStale={false} />);
+    render(
+      <ResultView id="result" result={resultWith('猫', '犬', '鳥')} isStale={false} isSelectable />,
+    );
     const [cat, dog, bird] = screen.getAllByRole('button');
 
     expect([cat, dog, bird].map((b) => b?.tabIndex)).toEqual([0, -1, -1]);
@@ -127,7 +147,7 @@ describe('ResultView', () => {
 
   it('結果を差し替えても、Tab で入れる語は1つだけ', () => {
     const { rerender } = render(
-      <ResultView id="result" result={resultWith('猫', '犬')} isStale={false} />,
+      <ResultView id="result" result={resultWith('猫', '犬')} isStale={false} isSelectable />,
     );
     const [, dog] = screen.getAllByRole('button');
     dog?.focus();
@@ -135,14 +155,16 @@ describe('ResultView', () => {
       dog.tabIndex = 0;
     }
 
-    rerender(<ResultView id="result" result={resultWith('鳥', '魚', '虫')} isStale={false} />);
+    rerender(
+      <ResultView id="result" result={resultWith('鳥', '魚', '虫')} isStale={false} isSelectable />,
+    );
 
     const tabStops = screen.getAllByRole('button').filter((b) => b.tabIndex === 0);
     expect(tabStops).toHaveLength(1);
   });
 
   it('古い結果は語を選べない', () => {
-    render(<ResultView id="result" result={transformResponse()} isStale />);
+    render(<ResultView id="result" result={transformResponse()} isStale isSelectable={false} />);
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });

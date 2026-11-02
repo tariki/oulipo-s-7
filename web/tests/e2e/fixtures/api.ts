@@ -25,6 +25,46 @@ interface TransformBody {
   text: string;
   mode: string;
   n: number;
+  exclusions?: number[];
+  senseOverrides?: Record<string, string>;
+}
+
+/** 「猫」の語義([P1: F8])。2つ目を選ぶと「三味線」に置き換わる。 */
+const CAT_SENSES = {
+  lemma: '猫',
+  senses: [
+    { synsetId: '02121620-n', rank: 0, definition: 'ネコ科の動物', lemmas: ['猫', 'ネコ'] },
+    { synsetId: '10000001-n', rank: 1, definition: '三味線のこと', lemmas: ['猫'] },
+  ],
+};
+
+const CONCEPT = (lemma: string, definition: string | null = null) => ({
+  synsetId: `0000000${String(lemma.length)}-n`,
+  lemma,
+  definition,
+});
+
+/** 置換経路([P1: F6])。五十音順は間の語2つ、概念版は階層を1段上がった経路。 */
+function routeOf(mode: string, original: string, replaced: string): unknown {
+  if (mode === 'gojuon') {
+    return {
+      type: 'gojuon',
+      fromIndex: 100,
+      toIndex: 103,
+      wrapped: false,
+      neighbors: [`${original}科`, `${original}背`],
+      neighborsOmitted: 0,
+    };
+  }
+  return {
+    type: 'concept',
+    climbs: [{ from: CONCEPT(original), to: CONCEPT('ネコ科の動物'), relation: 'hypernym' }],
+    parent: CONCEPT('動物', '生き物'),
+    from: CONCEPT('ネコ科の動物'),
+    to: CONCEPT(replaced, `${replaced}の定義`),
+    groupSize: 5,
+    wrapped: false,
+  };
 }
 
 /** 文章中の「猫」「名前」を名詞として置き換えた結果を作る(ほかの文字は文字列)。 */
@@ -47,8 +87,24 @@ export function fakeTransform(body: TransformBody): unknown {
       replacedText += rest.slice(0, index);
     }
     const word = words.find((w) => rest.startsWith(w, index)) ?? '';
-    const [replaced, status] = table[word] ?? [word, 'not_in_dictionary'];
-    segments.push({ type: 'noun', nounIndex, original: word, replaced, status, lemma: word });
+    const synsetId = body.senseOverrides?.[String(nounIndex)] ?? '02121620-n';
+    let [replaced, status] = table[word] ?? [word, 'not_in_dictionary'];
+    if (word === '猫' && synsetId === '10000001-n' && body.mode === 'concept') {
+      [replaced, status] = ['三味線', 'replaced'];
+    }
+    if (body.exclusions?.includes(nounIndex) === true) {
+      [replaced, status] = [word, 'excluded'];
+    }
+    segments.push({
+      type: 'noun',
+      nounIndex,
+      original: word,
+      replaced,
+      status,
+      lemma: word,
+      ...(body.mode === 'concept' ? { synsetId: word === '猫' ? synsetId : '00000099-n' } : {}),
+      ...(status === 'excluded' ? {} : { route: routeOf(body.mode, word, replaced) }),
+    });
     replacedText += replaced;
     nounIndex += 1;
     rest = rest.slice(index + word.length);
@@ -123,6 +179,13 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
       return json(route, status, { error: { code: 'INTERNAL_ERROR', message: '失敗' } });
     }
     return json(route, 200, fakeTransform(body));
+  });
+  await page.route('**/api/v1/senses*', (route) => {
+    const lemma = new URL(route.request().url()).searchParams.get('lemma');
+    if (lemma !== '猫') {
+      return json(route, 404, { error: { code: 'LEMMA_NOT_FOUND', message: '辞書にありません' } });
+    }
+    return json(route, 200, CAT_SENSES);
   });
   await page.route('**/api/v1/events', (route) => {
     mock.events.push(route.request().postDataJSON() as Record<string, unknown>);

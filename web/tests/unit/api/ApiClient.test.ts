@@ -168,6 +168,37 @@ describe('ApiClient', () => {
   });
 });
 
+describe('ApiClient.getSenses', () => {
+  it('見出し語をURLエンコードして語義の一覧を取る', async () => {
+    const body = {
+      lemma: '猫',
+      senses: [{ synsetId: '02121620-n', rank: 0, definition: '定義', lemmas: ['猫', 'ネコ'] }],
+    };
+    const fetchMock = vi.fn(() => Promise.resolve(jsonResponse(body)));
+    const client = new ApiClient(fetchMock);
+
+    await expect(client.getSenses('猫')).resolves.toEqual(body);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/senses?lemma=%E7%8C%AB',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('辞書に無い見出し語は LEMMA_NOT_FOUND', async () => {
+    const client = new ApiClient(() =>
+      Promise.resolve(jsonResponse({ error: { code: 'LEMMA_NOT_FOUND', message: '無い' } }, 404)),
+    );
+
+    expect((await catchError(client.getSenses('猫'))).code).toBe('LEMMA_NOT_FOUND');
+  });
+
+  it('形の違う応答は UNEXPECTED_RESPONSE', async () => {
+    const client = new ApiClient(() => Promise.resolve(jsonResponse({ lemma: '猫' })));
+
+    expect((await catchError(client.getSenses('猫'))).code).toBe('UNEXPECTED_RESPONSE');
+  });
+});
+
 describe('ApiError.from', () => {
   it('ApiError はそのまま、それ以外は UNEXPECTED_RESPONSE にする', () => {
     const original = new ApiError('NETWORK_ERROR');

@@ -7,7 +7,7 @@ import { ApiError } from '../../../src/api/ApiError';
 import { ApiClientProvider } from '../../../src/hooks/apiClientContext';
 import { errorMessage } from '../../../src/pages/messages';
 import { TransformPage } from '../../../src/pages/TransformPage';
-import { type FakeApi, createFakeApi } from '../support/fakeApi';
+import { type FakeApi, createFakeApi, transformResponse } from '../support/fakeApi';
 
 function renderPage(api: FakeApi = createFakeApi()) {
   render(
@@ -156,5 +156,147 @@ describe('errorMessage', () => {
     [new ApiError('UNEXPECTED_RESPONSE'), '変換に失敗しました'],
   ])('%s → %s', (error, expected) => {
     expect(errorMessage(error)).toContain(expected);
+  });
+});
+
+describe('TransformPage(選んだ語の面、P1)', () => {
+  /** 除外と語義の指定に応じた結果を返す偽の変換(概念版なら synsetId を返す)。 */
+  function withSpecs(api: FakeApi) {
+    api.transform.mockImplementation((request) => {
+      const response = transformResponse(request.text);
+      const isExcluded = request.exclusions?.includes(0) ?? false;
+      const synsetId = request.senseOverrides?.['0'] ?? '02121620-n';
+      return Promise.resolve({
+        ...response,
+        segments: response.segments.map((segment) =>
+          segment.type !== 'noun'
+            ? segment
+            : isExcluded
+              ? { ...segment, status: 'excluded' as const, replaced: segment.original }
+              : {
+                  ...segment,
+                  replaced: synsetId === '10000001-n' ? '三味線' : '獅子',
+                  ...(request.mode === 'concept' ? { synsetId } : {}),
+                },
+        ),
+        meta: { ...response.meta, mode: request.mode },
+      });
+    });
+    return api;
+  }
+
+  async function transformed(mode: '五十音順' | '概念版' = '五十音順') {
+    const user = userEvent.setup();
+    const api = renderPage(withSpecs(createFakeApi()));
+    await user.type(screen.getByLabelText('文章'), '吾輩は猫である。');
+    await user.click(screen.getByRole('radio', { name: mode }));
+    await user.click(screen.getByRole('button', { name: '変換する' }));
+    await screen.findByRole('button', { name: /元の語は猫/ });
+    return { user, api };
+  }
+
+  it('語を選ぶと面を開いて見出しにフォーカスし、Esc で閉じて語にフォーカスを戻す', async () => {
+    const { user } = await transformed();
+    const token = screen.getByRole('button', { name: '獅子、元の語は猫' });
+
+    await user.click(token);
+    const heading = screen.getByRole('heading', { name: '選んだ語: 猫 → 獅子' });
+    expect(heading).toHaveFocus();
+    expect(screen.getByText('語義の選び直しは、概念版で使えます。')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('heading', { name: /選んだ語/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '獅子、元の語は猫' })).toHaveFocus();
+  });
+
+  it('置き換えない指定をすると変換し直し、元の語に戻る。外すと置き換わる', async () => {
+    const { user, api } = await transformed();
+    await user.click(screen.getByRole('button', { name: '獅子、元の語は猫' }));
+
+    await user.click(screen.getByRole('button', { name: 'この語は置き換えない' }));
+
+    expect(await screen.findByRole('button', { name: '猫、置き換えない指定' })).toBeInTheDocument();
+    expect(api.transform).toHaveBeenLastCalledWith({
+      text: '吾輩は猫である。',
+      mode: 'gojuon',
+      n: 7,
+      exclusions: [0],
+    });
+    await user.click(screen.getByRole('button', { name: '置き換える(指定を外す)' }));
+    expect(await screen.findByRole('button', { name: '獅子、元の語は猫' })).toBeInTheDocument();
+  });
+
+  it('概念版で語義を選び直すと、その語義で変換し直す', async () => {
+    const { user, api } = await transformed('概念版');
+    await user.click(screen.getByRole('button', { name: '獅子、元の語は猫' }));
+
+    const other = await screen.findByRole('radio', { name: '猫三味線のこと' });
+    expect(screen.getByRole('radio', { name: '猫・ネコネコ科の動物' })).toBeChecked();
+    await user.click(other);
+
+    expect(await screen.findByRole('button', { name: '三味線、元の語は猫' })).toBeInTheDocument();
+    expect(api.transform).toHaveBeenLastCalledWith({
+      text: '吾輩は猫である。',
+      mode: 'concept',
+      n: 7,
+      senseOverrides: { '0': '10000001-n' },
+    });
+    expect(api.getSenses).toHaveBeenCalledWith('猫');
+    expect(screen.getByRole('radio', { name: '猫三味線のこと' })).toBeChecked();
+  });
+
+  it('語義の一覧を取れなければ理由を出し、結果は残す', async () => {
+    const { user, api } = await transformed('概念版');
+    api.getSenses.mockRejectedValueOnce(new ApiError('LEMMA_NOT_FOUND', { status: 404 }));
+    await user.click(screen.getByRole('button', { name: '獅子、元の語は猫' }));
+
+    expect(await screen.findByText('この語の語義は辞書にありません')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '獅子、元の語は猫' })).toBeInTheDocument();
+  });
+
+  it('変換し直している間に Esc を押しても、語にフォーカスを戻す', async () => {
+    const { user, api } = await transformed();
+    await user.click(screen.getByRole('button', { name: '獅子、元の語は猫' }));
+    api.transform.mockImplementationOnce(() => new Promise(() => undefined));
+
+    await user.click(screen.getByRole('button', { name: 'この語は置き換えない' }));
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('heading', { name: /選んだ語/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '獅子、元の語は猫' })).toHaveFocus();
+  });
+
+  it('変換に失敗したら面を閉じ、次に成功しても面は開かない', async () => {
+    const { user, api } = await transformed();
+    await user.click(screen.getByRole('button', { name: '獅子、元の語は猫' }));
+    api.transform.mockRejectedValueOnce(new ApiError('INTERNAL_ERROR', { status: 500 }));
+
+    await user.click(screen.getByRole('button', { name: 'この語は置き換えない' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /選んだ語/ })).not.toBeInTheDocument();
+
+    // 指定は残っているため、次の変換は置き換えない指定つきになる
+    await user.click(screen.getByRole('button', { name: '変換する' }));
+    await screen.findByRole('button', { name: '猫、置き換えない指定' });
+    expect(screen.queryByRole('heading', { name: /選んだ語/ })).not.toBeInTheDocument();
+  });
+
+  it('本文を編集したら面を閉じ、指定を消す', async () => {
+    const { user, api } = await transformed();
+    await user.click(screen.getByRole('button', { name: '獅子、元の語は猫' }));
+    await user.click(screen.getByRole('button', { name: 'この語は置き換えない' }));
+    await screen.findByRole('button', { name: '猫、置き換えない指定' });
+
+    await user.type(screen.getByLabelText('文章'), '名前はまだ無い。');
+
+    expect(screen.queryByRole('heading', { name: /選んだ語/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '変換する' }));
+    await waitFor(() => {
+      expect(api.transform).toHaveBeenLastCalledWith({
+        text: '吾輩は猫である。名前はまだ無い。',
+        mode: 'gojuon',
+        n: 7,
+      });
+    });
   });
 });

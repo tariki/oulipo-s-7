@@ -9,10 +9,17 @@ import styles from './ResultView.module.css';
 interface ResultViewProps {
   id: string;
   result: TransformResponse;
-  /** 文章を編集した後の古い結果か(薄く表示し、語は選べなくする)。 */
+  /** 直前の結果か(変換し直している間、文章を編集した後)。薄く表示する。 */
   isStale: boolean;
+  /**
+   * 語を選べるか(文章を編集した後の古い結果では選べなくする)。変換し直している間は選べるままにし、
+   * 語を button から作り直さない(1万語を作り直さないため。選んだ語の面からフォーカスを戻せるように)。
+   */
+  isSelectable: boolean;
   /** 変換後の文章の見出しの横に置くもの(コピーのボタン)。 */
   actions?: React.ReactNode;
+  /** [P1] 変換後の文章の語を選んだ。安定した参照を渡す(段落を描き直さないため)。 */
+  onSelectToken?: (nounIndex: number) => void;
 }
 
 const TOKEN_SELECTOR = '[data-noun-token]';
@@ -21,7 +28,14 @@ const TOKEN_SELECTOR = '[data-noun-token]';
  * 原文と変換後の文章を、それぞれ色の面に並べて表示する(PCは左右、スマートフォンは変換後が先)。
  * 変換後の語は、Tabキーでは1回で入り、中では左右の矢印キーで移る(ロービングタブインデックス)。
  */
-export function ResultView({ id, result, isStale, actions }: ResultViewProps) {
+export function ResultView({
+  id,
+  result,
+  isStale,
+  isSelectable,
+  actions,
+  onSelectToken,
+}: ResultViewProps) {
   const paragraphs = useMemo(() => splitParagraphs(result.segments), [result]);
   const replacedRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +46,7 @@ export function ResultView({ id, result, isStale, actions }: ResultViewProps) {
     tokens.forEach((token, index) => {
       token.tabIndex = index === 0 ? 0 : -1;
     });
-  }, [paragraphs, isStale]);
+  }, [paragraphs, isSelectable]);
 
   // 段落を描き直さずに済むよう、tabIndex は DOM を直接切り替える
   const handleTokenKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
@@ -66,8 +80,9 @@ export function ResultView({ id, result, isStale, actions }: ResultViewProps) {
               key={paragraph.index}
               paragraph={paragraph}
               side="replaced"
-              isSelectable={!isStale}
+              isSelectable={isSelectable}
               onTokenKeyDown={handleTokenKeyDown}
+              onTokenSelect={onSelectToken}
             />
           ))}
         </div>

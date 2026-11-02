@@ -299,6 +299,7 @@ web/
 │   ├── hooks/
 │   │   ├── apiClientContext.tsx   # 画面が使う ApiClient の受け渡し(pages/ は api/ を直接取り込めないため。テストで差し替える)
 │   │   ├── useServerReadiness.ts  # 準備中の確認(checking・starting)、meta の再試行、20秒の上限
+│   │   ├── useSenses.ts           # [P1: F8] 語義の一覧(辞書の版と見出し語ごとに覚える)
 │   │   └── useTransform.ts        # TransformState、保持した変換操作と破棄、503後の再試行、除外と語義の指定
 │   ├── components/
 │   │   ├── SiteHeader.tsx         # 両ページに共通の見出しの帯とメニュー
@@ -315,6 +316,7 @@ web/
 │   │   ├── ParagraphView.tsx      # 段落1つ(memo。2,000文字を超える段落は分けて描画)
 │   │   ├── NounToken.tsx
 │   │   ├── Legend.tsx             # 語の表示の凡例
+│   │   ├── WordDetail.tsx         # [P1] 選んだ語の面(経路、置き換えない指定、語義の選び直し)
 │   │   ├── RoutePanel.tsx         # [P1: F6]
 │   │   ├── SensePicker.tsx        # [P1: F8]
 │   │   └── CopyButton.tsx

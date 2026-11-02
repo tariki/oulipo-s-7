@@ -5,6 +5,7 @@ import { ApiError } from '../../../src/api/ApiError';
 import type {
   AnalyticsEvent,
   MetaResponse,
+  SenseListResponse,
   TransformRequest,
   TransformResponse,
 } from '../../../src/api/types';
@@ -62,7 +63,17 @@ export interface FakeApi {
   getMeta: ReturnType<typeof vi.fn<() => Promise<MetaResponse>>>;
   transform: ReturnType<typeof vi.fn<(request: TransformRequest) => Promise<TransformResponse>>>;
   postEvent: ReturnType<typeof vi.fn<(event: AnalyticsEvent) => Promise<void>>>;
+  getSenses: ReturnType<typeof vi.fn<(lemma: string) => Promise<SenseListResponse>>>;
 }
+
+/** 「猫」の語義2つ。 */
+export const SENSES: SenseListResponse = {
+  lemma: '猫',
+  senses: [
+    { synsetId: '02121620-n', rank: 0, definition: 'ネコ科の動物', lemmas: ['猫', 'ネコ'] },
+    { synsetId: '10000001-n', rank: 1, definition: '三味線のこと', lemmas: ['猫'] },
+  ],
+};
 
 /** ApiClient の偽物。既定では meta も変換も成功する。 */
 export function createFakeApi(): FakeApi {
@@ -71,6 +82,9 @@ export function createFakeApi(): FakeApi {
     Promise.resolve(transformResponse(request.text)),
   );
   const postEvent = vi.fn<(event: AnalyticsEvent) => Promise<void>>(() => Promise.resolve());
-  const client = { getMeta, transform, postEvent } as unknown as ApiClient;
-  return { client, getMeta, transform, postEvent };
+  const getSenses = vi.fn<(lemma: string) => Promise<SenseListResponse>>(() =>
+    Promise.resolve(SENSES),
+  );
+  const client = { getMeta, transform, postEvent, getSenses } as unknown as ApiClient;
+  return { client, getMeta, transform, postEvent, getSenses };
 }
