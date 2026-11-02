@@ -508,7 +508,7 @@ main(常に動く状態。ホスティング先の決定後は、マージする
 | 必要な承認の数 | 開発者が1人のうちは0(CIが通れば自分でマージしてよい)。2人以上になったら1 |
 | マージ前にブランチを最新にする | はい |
 
-- `main.yml`(マージ後)が失敗したら、原因を調べる前に、まずそのプルリクエストを `git revert` するプルリクエストを出して `main` を戻す
+- `main.yml`・`dictionary.yml`・`docker.yml`(マージ後)が失敗したら、原因を調べる前に、まずそのプルリクエストを `git revert` するプルリクエストを出して `main` を戻す。性能テストの失敗で、同じ実行を再実行して通るなら(速さのばらつき)、戻さずに記録を残す
 
 ### コミットメッセージ
 
@@ -571,11 +571,11 @@ Closes #14
 | `pip-audit`、`npm audit` | - | ○ | ○ |
 | APIの型とライセンス一覧を作り直して差分が無いこと | - | ○ | ○ |
 | プルリクエストのタイトルの形式 | - | ○ | - |
-| 本物の辞書のビルド、報告の一致(`scripts/check-reports.sh`)、スナップショット | - | 辞書に関わるファイルを変えたときだけ(下記) | ○ |
-| 性能(サーバー)、E2E | - | - | ○ |
+| 本物の辞書のビルド、報告の一致(`scripts/check-reports.sh`)、スナップショット、性能(サーバー) | - | 辞書に関わるファイルを変えたときだけ(下記。`dictionary.yml`) | ○(`dictionary.yml`) |
+| E2E(画面の性能を含む) | - | - | ○(`main.yml`) |
 | コンテナのビルドとデプロイ | - | - | 別のワークフロー `deploy.yml`(ホスティング先の決定後に作る) |
 
-- **辞書に関わるファイル**: `server/src/s7builder/**`、`server/src/s7/services/gojuon_collation.py`、`server/src/s7/services/formal_nouns.py`、`server/uv.lock`、`data/excluded-lemmas.txt`、`data/wnjpn.db.sha256`、`data/standard-texts/**`。これらを変えたプルリクエストでは、`ci.yml` が `paths` の条件で辞書のビルドと報告の一致・スナップショットも実行する。辞書の更新忘れをマージ前に見つけるため
+- **辞書に関わるファイル**: `server/src/s7builder/**`、`server/src/s7/` の `services/`・`repositories/`・`adapters/`・`domain/`・`api/`・`app.py`・`config.py`(スナップショットはAPIの応答で比べるため)、`server/pyproject.toml`、`server/uv.lock`、`server/tests/conftest.py`、`server/tests/snapshot/**`、`server/tests/performance/**`、`data/excluded-lemmas.txt`、`data/wnjpn.db.sha256`、`data/standard-texts/**`、`data/reports/**`、`licenses/wordnet-ja.txt`、`scripts/fetch-wordnet.sh`・`build-dictionary.sh`・`check-reports.sh`、`.github/workflows/dictionary.yml`。これらを変えたプルリクエストでは、別のワークフロー `dictionary.yml` が `paths` の条件で、辞書のビルド、報告の一致、スナップショット、性能(サーバー)を実行する。辞書の更新忘れと結果の変化をマージ前に見つけるため。パスで絞るため、ルールセットの必須チェックには入れない
 - 依存関係を変えたら `scripts/generate-licenses.sh`、APIを変えたら `scripts/generate-api-types.sh` を手元で実行し、結果をコミットする(CIは作り直して差分を確かめるだけ)
 
 ### プルリクエスト
@@ -739,7 +739,7 @@ describe('countChars', () => {
 
 ### スナップショットの更新
 
-- 期待値は `server/tests/snapshot/expected/[テキスト名].[mode].json`
+- 期待値は `server/tests/snapshot/expected/[テキスト名].[mode].json`。大きくなりすぎないよう要点だけを書く(変換後の文章の各行と、名詞ごとの `[元の語, 変換後の語, 状態]` を1行に1つ)。経路などの細部は小さな辞書のテストで確かめる
 - 更新は `uv run --directory server pytest -m snapshot --update-snapshots` で行う(`--update-snapshots` は `conftest.py` で定義する)。更新したら差分を読み、意図した変化かをプルリクエストに書く
 
 ## 変換用辞書を変えるときの手順
@@ -850,6 +850,9 @@ scripts/dev.sh
 | 本物の辞書が必要なテストだけ | `uv run --directory server pytest -m "snapshot or performance"` |
 | 画面のテスト | `npm test --prefix web` |
 | E2Eテスト | `npm run e2e --prefix web` |
+| 画面の性能テスト(ほかのE2Eと並べずに1つずつ) | `npm run e2e:performance --prefix web` |
+| 本物の辞書を作り、報告を更新する | `scripts/build-dictionary.sh`(先に `scripts/fetch-wordnet.sh`) |
+| スナップショットの期待値を作り直す | `uv run --directory server pytest -m snapshot --update-snapshots` |
 | APIの型を作り直す | `scripts/generate-api-types.sh` |
 | ライセンス一覧を作り直す | `scripts/generate-licenses.sh` |
 | 報告がコミット済みのものと一致するか確かめる | `scripts/check-reports.sh` |

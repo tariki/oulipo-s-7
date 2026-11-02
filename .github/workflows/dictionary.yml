@@ -1,0 +1,78 @@
+# 本物の変換用辞書を使う確認(docs/development-guidelines.md「手元で確かめることとCI」)。
+# - 辞書のビルドと、報告(build-report.json・quality-report.json)がコミット済みのものと一致すること
+# - スナップショットテスト(標準の文章3本 × 両モード)
+# - 性能テスト(サーバー。50,000文字。CIは速度がばらつくため上限を2秒にする)
+# 日本語WordNetの取得と辞書のビルドを含むため、すべてのプルリクエストでは動かさない。
+# mainへのマージ、辞書や変換の処理に関わるファイルを変えたプルリクエスト、手動実行のときだけ。
+# パスで絞っているため、ルールセットの必須チェックには入れない(docker.yml と同じ)。
+name: dictionary
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - server/src/s7builder/**
+      - server/src/s7/services/**
+      - server/src/s7/repositories/**
+      - server/src/s7/adapters/**
+      - server/src/s7/domain/**
+      # スナップショットは API の応答で比べるため、API とアプリの組み立ても含める
+      - server/src/s7/api/**
+      - server/src/s7/app.py
+      - server/src/s7/config.py
+      - server/pyproject.toml
+      - server/tests/conftest.py
+      - server/uv.lock
+      - server/tests/snapshot/**
+      - server/tests/performance/**
+      - data/excluded-lemmas.txt
+      - data/wnjpn.db.sha256
+      - data/standard-texts/**
+      - data/reports/**
+      - licenses/wordnet-ja.txt
+      - scripts/fetch-wordnet.sh
+      - scripts/build-dictionary.sh
+      - scripts/check-reports.sh
+      - .github/workflows/dictionary.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dictionary-${{ github.event.pull_request.number || github.ref }}
+  # プルリクエストでは古い実行を止める。main では止めない(マージごとに確かめるため。main.yml と同じ)
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dictionary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: server/uv.lock
+      - name: 依存関係を入れる
+        run: uv sync --locked --directory server
+      - name: 日本語WordNetをキャッシュから戻す
+        uses: actions/cache@v6
+        with:
+          path: data/source/wnjpn.db
+          key: wordnet-${{ hashFiles('data/wnjpn.db.sha256') }}
+      - name: 日本語WordNetを取得する(キャッシュに無ければ)
+        run: scripts/fetch-wordnet.sh
+      - name: 辞書をビルドし、報告がコミット済みのものと一致することを確かめる
+        run: scripts/check-reports.sh
+      # 報告の一致で失敗しても、スナップショットと性能の結果を同じ実行で見られるようにする
+      - name: スナップショットテスト
+        if: ${{ !cancelled() }}
+        run: uv run --directory server pytest -m snapshot
+      - name: 性能テスト(サーバー)
+        if: ${{ !cancelled() }}
+        env:
+          S7_PERF_LIMIT_SECONDS: "2"
+        run: uv run --directory server pytest -m performance -s

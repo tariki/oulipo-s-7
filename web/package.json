@@ -18,6 +18,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "e2e": "playwright test",
+    "e2e:performance": "E2E_PERFORMANCE=1 playwright test --workers=1",
     "e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {

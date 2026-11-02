@@ -442,7 +442,7 @@ licenses/
 | ファイル | 内容 |
 |----------|------|
 | `fetch-wordnet.sh` | `wnjpn.db` をダウンロードし(配布元の bond-lab/wnja の v1.1 のリリース。`WORDNET_URL` で変えられる)、`data/wnjpn.db.sha256` で中身を確かめる |
-| `build-dictionary.sh` | `s7builder build` と `s7builder quality` を実行し、`data/build/s7dict.sqlite` と2つの報告を作る(`quality` は品質の報告の作業で足す。いまは `build` だけ) |
+| `build-dictionary.sh` | `s7builder build` と `s7builder quality` を実行し、`data/build/s7dict.sqlite` と2つの報告を作る(置換率が基準値から5ポイント以上下がった値があれば警告を出す。失敗にはしない) |
 | `check-reports.sh` | 2つの報告(`build-report.json`・`quality-report.json`)を作り直し、コミット済みのものと一致するかを確かめる(CIで使う) |
 | `export-openapi.py` | サーバーのOpenAPI仕様をJSONで出力する(サーバーを起動せずに) |
 | `generate-api-types.sh` | `export-openapi.py` の出力から、openapi-typescript で `web/src/api/generated/schema.d.ts` を作る |
@@ -474,10 +474,11 @@ deploy/                        # ホスティング先の決定後に作る
 
 .github/
 ├── workflows/
-│   ├── ci.yml                 # プルリクエスト: リント、型チェック、依存の向きの検査、ユニット・統合テスト(sudachiを含む)、脆弱性の検査、画面のビルド、APIの型とライセンス一覧の差分確認。辞書に関わるファイルを変えたときだけ辞書ビルド・報告の一致・スナップショットも
+│   ├── ci.yml                 # プルリクエスト: リント、型チェック、依存の向きの検査、ユニット・統合テスト(sudachiを含む)、脆弱性の検査、画面のビルド、APIの型とライセンス一覧の差分確認(辞書のビルド・報告の一致・スナップショット・性能は dictionary.yml)
 │   ├── pr-title.yml           # プルリクエストのタイトルの形式(タイトルの編集でも動く。ci.yml を走り直させないため分ける)
 │   ├── docker.yml             # Dockerのイメージのビルドと起動の確認(scripts/smoke-test-image.sh)。mainへのマージ、イメージの中身に関わるファイルを変えたプルリクエスト、手動実行のときだけ
-│   └── main.yml               # mainへのマージ: ci.yml の内容に加えて、辞書ビルド、報告の一致の確認、スナップショット、性能、E2E(内容はarchitecture.md「CI/CD」。いまはE2Eだけ)
+│   ├── dictionary.yml         # 本物の辞書のビルド、報告の一致の確認、スナップショット、性能(サーバー)。mainへのマージ、辞書や変換の処理に関わるファイルを変えたプルリクエスト、手動実行のときだけ
+│   └── main.yml               # mainへのマージ: E2E(画面の性能を含む。内容はarchitecture.md「CI/CD」)
 ├── pull_request_template.md   # 内容は開発ガイドラインの「プルリクエスト」
 ├── ISSUE_TEMPLATE/
 │   └── excluded-word-report.yml  # 不適切な語の報告用(PRDの「除外リストの公開前の完了条件」)
@@ -494,7 +495,7 @@ architecture.mdのマルチステージビルドに対応する。リポジト�
 |----------|--------------|----------|------|
 | 0. `uv`(ghcr.io/astral-sh/uv) | なし | uv のバイナリを渡すだけ。ステージ2・3が `RUN --mount=from=uv` で使い、実行用イメージには入れない | なし |
 | 1. `web`(node:24) | `web/`(`node_modules` を除く)、`licenses/`(`generated/` を含む)、`data/dictionary-history.md` | `npm ci`、`npm run build` | `web/dist/` |
-| 2. `dictionary`(python:3.13) | `server/pyproject.toml`、`server/uv.lock`、`server/src/`、`data/wnjpn.db.sha256`、`data/excluded-lemmas.txt`、`licenses/wordnet-ja.txt`、`scripts/fetch-wordnet.sh` | `uv sync --frozen --no-dev`、`fetch-wordnet.sh`、`python -m s7builder build`(品質の報告は作らない。CIの `main.yml` で作る) | `s7dict.sqlite` |
+| 2. `dictionary`(python:3.13) | `server/pyproject.toml`、`server/uv.lock`、`server/src/`、`data/wnjpn.db.sha256`、`data/excluded-lemmas.txt`、`licenses/wordnet-ja.txt`、`scripts/fetch-wordnet.sh` | `uv sync --frozen --no-dev`、`fetch-wordnet.sh`、`python -m s7builder build`(品質の報告は作らない。CIの `dictionary.yml` で作る) | `s7dict.sqlite` |
 | 3. `runtime`(python:3.13-slim) | `server/pyproject.toml`、`server/uv.lock`、`server/src/s7/`、ステージ1・2の出力 | `uv sync --frozen --no-dev --no-install-project`(SudachiPy・SudachiDict-core・FastAPIなどの依存関係だけを入れる)。`s7/` だけをコピーし、`PYTHONPATH` で読み込む | 実行用イメージ |
 
 - 実行用ステージには `s7builder/`、`tests/`、`wnjpn.db`、Node.js、開発用の依存関係を入れない。辞書ビルダーはパッケージとして入れず、ソースもコピーしない

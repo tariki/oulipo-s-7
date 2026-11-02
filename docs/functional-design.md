@@ -640,7 +640,10 @@ class QualityReporter:
     def report(self, dictionary: Path, texts_dir: Path) -> QualityReport: ...
 ```
 
-- コマンド: `python -m s7builder quality --dictionary data/build/s7dict.sqlite --output data/reports/quality-report.json`
+- コマンド: `python -m s7builder quality --dictionary data/build/s7dict.sqlite --texts data/standard-texts --output data/reports/quality-report.json --baseline data/reports/quality-baseline.json`(パスは省ける)
+- 報告は文章ごと(名前の順)・モードごとに、名詞の数(`noun_count`)、置き換えた数(`replaced_count`。`replaced` と `climbed`)、置換率(`replaced_rate`。百分率、小数2桁)。キーは `build-report.json` と同じく snake_case で並べ替える。毎回変わる値は入れない
+- 基準値のファイルがあれば比べ、5ポイント以上下がった値を警告のログで出す(失敗にはしない)
+- 標準の文章は、冒頭の `#` で始まる行(出典)と、その直後の空行を除いて読む(`read_standard_text`。スナップショットと性能のテストも同じ関数を使う)
 - 変換処理(`s7.services`、`s7.adapters`)を使う。辞書ビルダーの中でこれらに依存してよいのは、このモジュール(`s7builder/quality_report.py`)だけ(`docs/repository-structure.md`)
 - 基準値は `data/reports/quality-baseline.json` に置き、手で更新する
 
@@ -1631,7 +1634,8 @@ PC(幅768px以上)                         スマートフォン(幅768px未満)
 
 ### 性能テスト
 - PC: 10,000文字で2秒以内、50,000文字で5秒以内(サーバー処理と画面の描画を合わせて。サーバー起動済みの状態での95パーセンタイル値)
-- スマートフォン相当(CPU 4倍減速、低速4G): 10,000文字で4秒以内。50,000文字は計測して記録する
+- スマートフォン相当(CPU 4倍減速、低速4G): 10,000文字で4秒以内。50,000文字は計測して記録する(ホスティング先の決定後に、本番相当の環境で測る。Dev Container とCIは速さのばらつきが大きいため)
+- いまの画面の性能テスト(`web/tests/e2e/performance.spec.ts`)は、PC幅のChromiumで、サーバーの処理をモックにし、通信を下り10Mbps・往復遅延50msとみなして待つ。サーバーの処理は `server/tests/performance/` で別に測る(結果はarchitecture.md「予算の内訳」の後)
 - コールドスタート: 台数0の状態でページを開き、自動操作で10,000文字を入力してすぐ変換し、結果が出るまでを5回測る。最大値が10秒以内(ホスティング先の決定後に実施)
 - 本文の上限: 50,000文字(補助面の文字を含む)を `\uXXXX` で書き、`exclusions`・`senseOverrides` を各1,000個付けたリクエストが413にならないこと(統合テスト)
 

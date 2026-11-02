@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -135,3 +136,104 @@ def test_main_with_unwritable_output_exits_with_1(
     # Then
     assert code == 1
     assert "辞書のビルドに失敗しました" in capsys.readouterr().err
+
+
+def _quality_args(prepared: Path, **overrides: Path) -> list[str]:
+    paths = {
+        "dictionary": prepared / "build" / "s7dict.sqlite",
+        "texts": prepared / "standard-texts",
+        "output": prepared / "reports" / "quality-report.json",
+        "baseline": prepared / "reports" / "quality-baseline.json",
+    } | overrides
+    return ["quality", *(arg for name, path in paths.items() for arg in (f"--{name}", str(path)))]
+
+
+@pytest.fixture
+def built(prepared: Path) -> Path:
+    """小さな辞書を作り、標準の文章を1本置く(名詞は「猫」1つ。両モードで置き換わる)。"""
+    main(_args(prepared), tokenizer_factory=_fake_tokenizer)
+    texts = prepared / "standard-texts"
+    texts.mkdir()
+    (texts / "cat.txt").write_text("# 出典\n\n猫\n", encoding="utf-8")
+    return prepared
+
+
+def test_main_quality_writes_report(built: Path) -> None:
+    # When
+    code = main(_quality_args(built), tokenizer_factory=_fake_tokenizer)
+
+    # Then
+    assert code == 0
+    report = json.loads((built / "reports" / "quality-report.json").read_text(encoding="utf-8"))
+    assert report["n"] == 7
+    assert report["texts"] == [
+        {
+            "name": "cat",
+            "chars": 1,
+            "gojuon": {"noun_count": 1, "replaced_count": 1, "replaced_rate": 100.0},
+            "concept": {"noun_count": 1, "replaced_count": 1, "replaced_rate": 100.0},
+        }
+    ]
+
+
+def test_main_quality_warns_about_drops_from_baseline(
+    built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Given: 置換率は100%のため、基準値を100を超える値にして下がったことにする
+    baseline = built / "reports" / "quality-baseline.json"
+    baseline.parent.mkdir(exist_ok=True)
+    baseline.write_text(
+        json.dumps({"texts": {"cat": {"gojuon": 110.0, "concept": 100.0}}}), encoding="utf-8"
+    )
+
+    # When
+    code = main(_quality_args(built), tokenizer_factory=_fake_tokenizer)
+
+    # Then: 失敗にはせず、知らせる
+    assert code == 0
+    output = capsys.readouterr()
+    logs = output.out + output.err
+    assert "cat・gojuon: 置換率 100.00% が基準値 110.00% から 10.00 ポイント下がりました" in logs
+    assert "cat・concept" not in logs
+
+
+def test_main_quality_without_baseline_still_writes_report(
+    built: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code = main(_quality_args(built), tokenizer_factory=_fake_tokenizer)
+
+    assert code == 0
+    output = capsys.readouterr()
+    assert "置換率の基準値が無いため、比べません" in output.out + output.err
+
+
+@pytest.mark.parametrize(
+    ("setup", "message"),
+    [
+        (lambda p: (p / "build" / "s7dict.sqlite").unlink(), "変換用辞書がありません"),
+        (lambda p: (p / "standard-texts" / "cat.txt").unlink(), "標準の文章がありません"),
+        (
+            lambda p: (p / "reports" / "quality-baseline.json").write_text("[]", encoding="utf-8"),
+            "置換率の基準値の形が違います",
+        ),
+        (
+            lambda p: (p / "reports" / "quality-baseline.json").write_text("{", encoding="utf-8"),
+            "品質の報告を作れませんでした",
+        ),
+    ],
+)
+def test_main_quality_failures_exit_with_1(
+    built: Path,
+    capsys: pytest.CaptureFixture[str],
+    setup: Callable[[Path], object],
+    message: str,
+) -> None:
+    # Given
+    setup(built)
+
+    # When
+    code = main(_quality_args(built), tokenizer_factory=_fake_tokenizer)
+
+    # Then
+    assert code == 1
+    assert message in capsys.readouterr().err

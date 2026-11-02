@@ -1,6 +1,6 @@
-# mainへのマージ時のCI。内容は docs/development-guidelines.md「手元で確かめることとCI」の
-# 「mainへのマージ」の列。いまはE2Eテストだけ(本物の辞書のビルド、報告の一致、スナップショット、
-# 性能テストは、品質の報告の作業で足す)。失敗したら、まずそのプルリクエストを戻す(revert)。
+# mainへのマージ時のCI。E2Eテスト(画面の性能 performance.spec.ts を含む)。本物の辞書のビルド、
+# 報告の一致、スナップショット、性能(サーバー)は dictionary.yml で行う
+# (docs/development-guidelines.md「手元で確かめることとCI」)。失敗したら、まずそのプルリクエストを戻す(revert)。
 name: main
 
 on:
@@ -36,6 +36,11 @@ jobs:
         run: npm run e2e
         env:
           CI: "true"
+      - name: 画面の性能テスト(PC幅のChromium、1つずつ。CIは上限を2倍にする)
+        run: npm run e2e:performance
+        env:
+          CI: "true"
+          E2E_PERF_LIMIT_FACTOR: "2"
       - name: 失敗したときの記録を残す
         if: failure()
         uses: actions/upload-artifact@v7

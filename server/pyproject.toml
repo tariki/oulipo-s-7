@@ -191,10 +191,12 @@ type = "forbidden"
 allow_indirect_imports = true
 source_modules = ["s7builder"]
 forbidden_modules = ["s7.services", "s7.repositories"]
-# services.formal_nouns は変換の処理の作業で、s7builder.quality_report の例外は品質の報告の作業で足す
+# 品質の報告(s7builder.quality_report)だけは、作った辞書で実際に変換するため、変換の処理を使ってよい
 ignore_imports = [
   "s7builder.** -> s7.services.gojuon_collation",
   "s7builder.** -> s7.repositories.dictionary_schema",
+  "s7builder.quality_report -> s7.services.*",
+  "s7builder.quality_report -> s7.repositories.dictionary_repository",
 ]
 
 [[tool.importlinter.contracts]]

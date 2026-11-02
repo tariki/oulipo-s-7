@@ -1,0 +1,48 @@
+{
+  "dictionary_version": "2026.10.0",
+  "n": 7,
+  "texts": [
+    {
+      "chars": 5769,
+      "concept": {
+        "noun_count": 501,
+        "replaced_count": 423,
+        "replaced_rate": 84.43
+      },
+      "gojuon": {
+        "noun_count": 501,
+        "replaced_count": 419,
+        "replaced_rate": 83.63
+      },
+      "name": "chumon"
+    },
+    {
+      "chars": 5781,
+      "concept": {
+        "noun_count": 766,
+        "replaced_count": 656,
+        "replaced_rate": 85.64
+      },
+      "gojuon": {
+        "noun_count": 766,
+        "replaced_count": 652,
+        "replaced_rate": 85.12
+      },
+      "name": "rashomon"
+    },
+    {
+      "chars": 5772,
+      "concept": {
+        "noun_count": 711,
+        "replaced_count": 592,
+        "replaced_rate": 83.26
+      },
+      "gojuon": {
+        "noun_count": 711,
+        "replaced_count": 585,
+        "replaced_rate": 82.28
+      },
+      "name": "wagahai"
+    }
+  ]
+}
