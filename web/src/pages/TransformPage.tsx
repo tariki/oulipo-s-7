@@ -154,13 +154,13 @@ export function TransformPage() {
   }, [selected]);
 
   // 面を閉じたら、選んでいた語にフォーカスを戻す
+  // 閉じたら選んでいた語へフォーカスを戻す(変換し直している間なら、新しい結果で作り直された
+  // 同じ語へは ResultView が戻す)
   const handleCloseDetail = useCallback(() => {
     const index = selectedIndex;
     setSelection(null);
     if (index !== null) {
-      document
-        .querySelector<HTMLElement>(`#${RESULT_ID} [data-noun-index="${String(index)}"]`)
-        ?.focus();
+      focusToken(index);
     }
   }, [selectedIndex]);
 
@@ -249,6 +249,13 @@ export function TransformPage() {
       </main>
     </div>
   );
+}
+
+/** 結果の中の nounIndex の語にフォーカスを移す(無ければ何もしない)。 */
+function focusToken(nounIndex: number) {
+  document
+    .querySelector<HTMLElement>(`#${RESULT_ID} [data-noun-index="${String(nounIndex)}"]`)
+    ?.focus();
 }
 
 /** 選んだ語。辞書の版も覚える(版が変わると nounIndex が別の名詞を指しうるため)。 */

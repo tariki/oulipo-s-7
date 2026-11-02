@@ -266,6 +266,29 @@ describe('TransformPage(選んだ語の面、P1)', () => {
     expect(screen.getByRole('button', { name: '獅子、元の語は猫' })).toHaveFocus();
   });
 
+  it('変換し直している間に Esc で閉じたら、新しい結果の語にもフォーカスを戻す', async () => {
+    const { user, api } = await transformed();
+    await user.click(screen.getByRole('button', { name: '獅子、元の語は猫' }));
+    let finish: (() => void) | undefined;
+    const pending = api.transform.getMockImplementation();
+    api.transform.mockImplementationOnce(
+      (request) =>
+        new Promise((resolve) => {
+          finish = () => {
+            void pending?.(request).then(resolve);
+          };
+        }),
+    );
+    await user.click(screen.getByRole('button', { name: 'この語は置き換えない' }));
+    await user.keyboard('{Escape}');
+
+    finish?.();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '猫、置き換えない指定' })).toHaveFocus();
+    });
+  });
+
   it('変換に失敗したら面を閉じ、次に成功しても面は開かない', async () => {
     const { user, api } = await transformed();
     await user.click(screen.getByRole('button', { name: '獅子、元の語は猫' }));

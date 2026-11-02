@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -161,6 +161,73 @@ describe('ResultView', () => {
 
     const tabStops = screen.getAllByRole('button').filter((b) => b.tabIndex === 0);
     expect(tabStops).toHaveLength(1);
+  });
+
+  it('新しい結果では変換後の語を作り直す(WebKit が書き換えただけの段落を描き直さないため)', () => {
+    const first = transformResponse();
+    const { rerender } = render(
+      <ResultView id="result" result={first} isStale={false} isSelectable />,
+    );
+    const before = screen.getByRole('button', { name: '獅子、元の語は猫' });
+
+    // 同じ結果で描き直しても作り直さない
+    rerender(<ResultView id="result" result={first} isStale={false} isSelectable />);
+    expect(screen.getByRole('button', { name: '獅子、元の語は猫' })).toBe(before);
+
+    // 中身が同じでも新しい結果なら作り直す
+    rerender(<ResultView id="result" result={transformResponse()} isStale={false} isSelectable />);
+    expect(screen.getByRole('button', { name: '獅子、元の語は猫' })).not.toBe(before);
+  });
+
+  it('新しい結果では原文の段落も作り直す', () => {
+    const { rerender } = render(
+      <ResultView id="result" result={transformResponse()} isStale={false} isSelectable />,
+    );
+    const original = screen.getByRole('region', { name: '原文' });
+    const before = within(original).getByText('吾輩は猫である。');
+
+    rerender(<ResultView id="result" result={transformResponse()} isStale={false} isSelectable />);
+
+    expect(within(original).getByText('吾輩は猫である。')).not.toBe(before);
+  });
+
+  it('語にフォーカスがあるまま結果が差し替わったら、新しい結果の同じ語にフォーカスを戻す', () => {
+    const { rerender } = render(
+      <ResultView id="result" result={transformResponse()} isStale={false} isSelectable />,
+    );
+    act(() => {
+      screen.getByRole('button', { name: '獅子、元の語は猫' }).focus();
+    });
+
+    rerender(<ResultView id="result" result={transformResponse()} isStale={false} isSelectable />);
+
+    const token = screen.getByRole('button', { name: '獅子、元の語は猫' });
+    expect(token).toHaveFocus();
+    expect(token).toHaveAttribute('tabindex', '0');
+  });
+
+  it('利用者がほかの要素へフォーカスを移していたら、結果が差し替わっても戻さない', () => {
+    const { rerender } = render(
+      <>
+        <ResultView id="result" result={transformResponse()} isStale={false} isSelectable />
+        <button type="button">ほか</button>
+      </>,
+    );
+    act(() => {
+      screen.getByRole('button', { name: '獅子、元の語は猫' }).focus();
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'ほか' }).focus();
+    });
+
+    rerender(
+      <>
+        <ResultView id="result" result={transformResponse()} isStale={false} isSelectable />
+        <button type="button">ほか</button>
+      </>,
+    );
+
+    expect(screen.getByRole('button', { name: 'ほか' })).toHaveFocus();
   });
 
   it('古い結果は語を選べない', () => {

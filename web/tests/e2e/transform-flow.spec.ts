@@ -56,6 +56,24 @@ test('概念版に切り替えて変換し直しても、入力が残る', async
   expect(api.transformRequests.at(-1)).toEqual({ text: TEXT, mode: 'concept', n: 3 });
 });
 
+test('本文を編集して変換し直しても、原文と変換後が描かれる', async ({ page }) => {
+  // WebKit は content-visibility: auto の段落の中身を書き換えただけでは描き直さないことがあった
+  await mockApi(page);
+  await page.goto('/');
+  await page.getByLabel('文章').fill(TEXT);
+  await page.getByRole('button', { name: '変換する' }).click();
+  await expect(page.getByRole('button', { name: '獅子、元の語は猫' })).toBeVisible();
+
+  await page.getByLabel('文章').fill('名前は猫である。');
+  await page.getByRole('button', { name: '変換する' }).click();
+
+  await expect(page.getByRole('button', { name: '名字、元の語は名前' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '獅子、元の語は猫' })).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: '原文' }).getByText('名前は猫である。'),
+  ).toBeVisible();
+});
+
 test('スマートフォン幅では、変換後の文章を原文より先に表示する', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile-360', 'スマートフォン幅だけ');
   await mockApi(page);
