@@ -1,11 +1,13 @@
 """辞書ビルダーのコマンド。
 
     uv run --directory server python -m s7builder build
+    uv run --directory server python -m s7builder quality
 
 パスを省くと、リポジトリ直下を基準にした既定のパスを使う。
 """
 
 import argparse
+import json
 import sqlite3
 import sys
 from collections.abc import Callable, Sequence
@@ -16,10 +18,12 @@ from typing import Final
 
 from s7.adapters.sudachi_tokenizer import SudachiTokenizer
 from s7.adapters.tokenizer import Tokenizer
+from s7.domain.errors import DictionaryIntegrityError
 from s7.logging_config import configure_logging, log_app
 from s7builder.build_report import write_build_report
 from s7builder.dictionary_builder import DictionaryBuilder
 from s7builder.errors import BuildError
+from s7builder.quality_report import QualityReporter, find_drops, write_quality_report
 
 # server/src/s7builder/__main__.py から4段上がリポジトリ直下(s7/config.py と同じ考え方。
 # 辞書ビルダーは config.py を使わないため、ここで求める)
@@ -41,6 +45,13 @@ def main(
     """
     args = _parse_args(argv)
     configure_logging("text", "INFO")
+    if args.command == "quality":
+        try:
+            _quality(args, tokenizer_factory)
+        except (sqlite3.Error, OSError, ValueError, DictionaryIntegrityError) as error:
+            sys.stderr.write(f"品質の報告を作れませんでした: {error}\n")
+            return 1
+        return 0
     try:
         _build(args, tokenizer_factory)
     # SQLiteやファイルの書き込みの失敗も、トレースバックではなく理由の1行で終える
@@ -62,6 +73,16 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         ("--report", "data/reports/build-report.json", "ビルドの報告の出力先"),
     ]:
         build.add_argument(name, type=_resolve, default=_resolve(default), help=help_text)
+    quality = commands.add_parser(
+        "quality", help="標準の文章で置換率を測り、品質の報告を作る(基準値から下がった値を知らせる)"
+    )
+    for name, default, help_text in [
+        ("--dictionary", "data/build/s7dict.sqlite", "変換用辞書"),
+        ("--texts", "data/standard-texts", "標準の文章のディレクトリ"),
+        ("--output", "data/reports/quality-report.json", "品質の報告の出力先"),
+        ("--baseline", "data/reports/quality-baseline.json", "置換率の基準値(無ければ比べない)"),
+    ]:
+        quality.add_argument(name, type=_resolve, default=_resolve(default), help=help_text)
     return parser.parse_args(argv)
 
 
@@ -83,6 +104,35 @@ def _build(args: argparse.Namespace, tokenizer_factory: Callable[[], Tokenizer])
     report = builder.build(args.wordnet, args.excluded, args.output)
     write_build_report(report, args.report)
     log_app("辞書のビルドが終わりました", **asdict(report.meta))
+
+
+def _quality(args: argparse.Namespace, tokenizer_factory: Callable[[], Tokenizer]) -> None:
+    dictionary: Path = args.dictionary
+    if not dictionary.is_file():
+        raise OSError(f"変換用辞書がありません: {dictionary}(先に build を実行してください)")
+    texts: Path = args.texts
+    if not any(texts.glob("*.txt")):
+        raise OSError(f"標準の文章がありません: {texts}")
+    log_app("品質の報告を作ります")
+    report = QualityReporter(tokenizer_factory()).report(dictionary, texts)
+    write_quality_report(report, args.output)
+    for text in report.texts:
+        log_app(
+            "置換率",
+            text=text.name,
+            gojuon=text.gojuon.replaced_rate,
+            concept=text.concept.replaced_rate,
+        )
+    baseline_path: Path = args.baseline
+    if not baseline_path.is_file():
+        log_app("置換率の基準値が無いため、比べません", path=str(baseline_path))
+        return
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    if not isinstance(baseline, dict):
+        raise ValueError(f"置換率の基準値の形が違います: {baseline_path}")
+    # 基準値から下がっても失敗にはしない。辞書を変えるプルリクエストで理由を説明する
+    for drop in find_drops(report, baseline):
+        log_app(drop, severity="WARNING")
 
 
 if __name__ == "__main__":

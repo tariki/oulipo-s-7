@@ -80,6 +80,7 @@ docker run --rm -p 8000:8000 s7-maker   # http://localhost:8000
 | Pythonのテスト | `uv run --directory server pytest` |
 | 画面のテスト | `npm test --prefix web` |
 | E2Eテスト | `npm run e2e --prefix web` |
+| 本物の辞書が必要なテスト(スナップショット、性能) | `uv run --directory server pytest -m "snapshot or performance"` |
 
 ## 技術スタック
 
@@ -113,4 +114,5 @@ docker run --rm -p 8000:8000 s7-maker   # http://localhost:8000
 | そのほかの依存ライブラリ | [Python](licenses/generated/python.txt)、[画面(npm)](licenses/generated/web.txt) の一覧のとおり |
 
 - 変換用辞書(`data/build/s7dict.sqlite`)は日本語WordNetとSudachiDictから作るため、これらのライセンスに従います。Gitには入れていません
+- テストと品質の確認に使う標準の文章(`data/standard-texts/`。夏目漱石・芥川龍之介・宮沢賢治の作品の一節)は、著作権の保護期間が満了した作品を[青空文庫](https://www.aozora.gr.jp/)から取ったものです。MITライセンスの対象ではありません。出典は各ファイルの冒頭に書いています
 - アプリの「このアプリについて」の画面にも、出典とライセンスの全文を載せています

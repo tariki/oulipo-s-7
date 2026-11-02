@@ -785,7 +785,7 @@ domain/(エンティティ・例外)
 | SQLite | 日本語WordNet(`wnjpn.db`)と変換用辞書(`s7dict.sqlite`)の形式。実行時には引かない | - | architecture.md |
 | React Router | 画面のルーティング(`/`、`/about`) | 導入時に固定 | architecture.md |
 | pytest / Vitest / Playwright | サーバーのテスト / 画面のユニットテスト / E2Eテスト | 導入時に固定 | 開発ガイドライン |
-| GitHub Actions | CI。プルリクエストは `ci.yml`、mainへのマージは `main.yml` | - | architecture.md |
+| GitHub Actions | CI。プルリクエストは `ci.yml`、mainへのマージは `main.yml`(E2E)。本物の辞書を使う確認は `dictionary.yml`、Dockerのイメージは `docker.yml`(どちらも関わるファイルを変えたときとmainへのマージ) | - | architecture.md |
 | Dependabot | 依存関係の更新のプルリクエストを週1回作る | - | 開発ガイドライン |
 | Dev Container | 開発環境(Python・uv・Node.js) | - | 開発ガイドライン |
 | 環境変数 | 実行時の設定。`PORT`、`S7_DICTIONARY_PATH`、`S7_STATIC_DIR`、`S7_LOG_FORMAT`、`S7_LOG_LEVEL`、`S7_TRUSTED_PROXY_HOPS`。既定値で動く | - | architecture.md「環境変数」 |
