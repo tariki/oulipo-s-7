@@ -3,6 +3,7 @@ import type {
   AnalyticsEvent,
   ErrorCode,
   MetaResponse,
+  SenseListResponse,
   TransformRequest,
   TransformResponse,
 } from './types';
@@ -59,6 +60,17 @@ export class ApiClient {
       throw new ApiError('UNEXPECTED_RESPONSE');
     }
     return body as TransformResponse;
+  }
+
+  /** 見出し語の語義の一覧([P1: F8])。見出し語は NounSegment.lemma をそのまま渡す。 */
+  async getSenses(lemma: string): Promise<SenseListResponse> {
+    const body = await this.requestJson(`/api/v1/senses?lemma=${encodeURIComponent(lemma)}`, {
+      method: 'GET',
+    });
+    if (!hasStringField(body, 'lemma') || !('senses' in body) || !Array.isArray(body.senses)) {
+      throw new ApiError('UNEXPECTED_RESPONSE');
+    }
+    return body as SenseListResponse;
   }
 
   /** 解析のイベントを送る。成功は 204(本文なし)。 */

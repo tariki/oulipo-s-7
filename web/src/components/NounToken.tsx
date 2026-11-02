@@ -8,6 +8,8 @@ interface NounTokenProps {
   /** 古い結果(文章を編集した後)なら選べなくする。 */
   isSelectable: boolean;
   onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  /** [P1] 語を選んだ(クリック・タップ・Enter)。選んだ語の面を開く。 */
+  onSelect?: (nounIndex: number) => void;
 }
 
 interface Appearance {
@@ -68,11 +70,16 @@ function appearanceOf(segment: NounSegment): Appearance {
   }
 }
 
+/** 名詞の状態の説明(ツールチップと、選んだ語の面で使う)。 */
+export function statusDescriptionOf(segment: NounSegment): string {
+  return appearanceOf(segment).description;
+}
+
 /**
  * 変換後の文章の名詞1つ(F4)。色に加えて下線の種類と印で状態を示す。
  * 辞書に無い語以外は button にし、ホバー・フォーカス・選択で元の語と状態の説明を出す。
  */
-export function NounToken({ segment, isSelectable, onKeyDown }: NounTokenProps) {
+export function NounToken({ segment, isSelectable, onKeyDown, onSelect }: NounTokenProps) {
   const tooltipId = useId();
   // フォーカスとクリックで開く。Esc で閉じ、ホバーで出ている表示も消す(WCAG 1.4.13)
   const [isOpen, setIsOpen] = useState(false);
@@ -109,10 +116,12 @@ export function NounToken({ segment, isSelectable, onKeyDown }: NounTokenProps) 
         aria-controls={tooltipId}
         tabIndex={-1}
         data-noun-token=""
+        data-noun-index={segment.nounIndex}
         onClick={() => {
           // タップでも出す(閉じるのは Esc とフォーカスが外れたとき)
           setIsOpen(true);
           setIsDismissed(false);
+          onSelect?.(segment.nounIndex);
         }}
         onFocus={() => {
           setIsOpen(true);

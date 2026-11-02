@@ -1,0 +1,60 @@
+/* 結果の下に置く(画面の下に留めると結果、とくに選んだ語を覆うため、留めない) */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-panel-plain);
+  border-top: 6px solid var(--color-band);
+  --panel-label: var(--color-panel-plain-label);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.heading {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.close,
+.toggle {
+  min-height: 44px;
+  padding: var(--space-1) var(--space-3);
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close {
+  color: var(--color-text);
+  background: var(--color-background);
+  border: 1px solid var(--color-text);
+}
+
+.toggle {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: none;
+}
+
+.toggle[aria-disabled='true'] {
+  background: var(--color-disabled);
+  cursor: not-allowed;
+}
+
+.description,
+.note {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

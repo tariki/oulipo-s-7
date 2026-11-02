@@ -28,6 +28,18 @@ test('結果表示', async ({ page }) => {
   await expectNoViolations(page);
 });
 
+test('選んだ語の面(概念版、語義の一覧つき)', async ({ page }) => {
+  await mockApi(page);
+  await page.goto('/');
+  await page.getByLabel('文章').fill('吾輩は猫である。名前はまだ無い。');
+  await page.getByRole('radio', { name: '概念版' }).check();
+  await page.getByRole('button', { name: '変換する' }).click();
+  await page.getByRole('button', { name: '虎、元の語は猫、上の階層から置き換え' }).click();
+  await expect(page.getByRole('radio', { name: '猫・ネコ ネコ科の動物' })).toBeVisible();
+
+  await expectNoViolations(page);
+});
+
 test('エラー', async ({ page }) => {
   await mockApi(page, { transformStatus: 500 });
   await page.goto('/');

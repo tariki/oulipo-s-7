@@ -9,6 +9,7 @@ interface ParagraphViewProps {
   side: 'original' | 'replaced';
   isSelectable: boolean;
   onTokenKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  onTokenSelect?: (nounIndex: number) => void;
 }
 
 /**
@@ -20,6 +21,7 @@ export const ParagraphView = memo(function ParagraphView({
   side,
   isSelectable,
   onTokenKeyDown,
+  onTokenSelect,
 }: ParagraphViewProps) {
   return (
     <div className={styles.paragraph}>
@@ -34,6 +36,7 @@ export const ParagraphView = memo(function ParagraphView({
             segment={item}
             isSelectable={isSelectable}
             onKeyDown={onTokenKeyDown}
+            onSelect={onTokenSelect}
           />
         );
       })}

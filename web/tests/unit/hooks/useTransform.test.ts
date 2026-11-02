@@ -339,3 +339,163 @@ describe('useTransform(検証の指摘への対応)', () => {
     });
   });
 });
+
+describe('useTransform(除外と語義の指定、P1)', () => {
+  async function transformed() {
+    const ctx = setup();
+    await settle();
+    act(() => {
+      ctx.result.current.setText('吾輩は猫である。');
+    });
+    act(() => {
+      ctx.result.current.submit();
+    });
+    await settle();
+    return ctx;
+  }
+
+  it('置き換えない指定を切り替えると、すぐ変換し直す。指定を外すと項目ごと省く', async () => {
+    const { api, result } = await transformed();
+
+    act(() => {
+      result.current.toggleExclusion(0);
+    });
+    await settle();
+    expect(api.transform).toHaveBeenLastCalledWith({
+      text: '吾輩は猫である。',
+      mode: 'gojuon',
+      n: 7,
+      exclusions: [0],
+    });
+    expect(result.current.exclusions).toEqual(new Set([0]));
+
+    act(() => {
+      result.current.toggleExclusion(0);
+    });
+    await settle();
+    expect(api.transform).toHaveBeenLastCalledWith({
+      text: '吾輩は猫である。',
+      mode: 'gojuon',
+      n: 7,
+    });
+  });
+
+  it('語義を選び直すと、すぐ変換し直す', async () => {
+    const { api, result } = await transformed();
+
+    act(() => {
+      result.current.overrideSense(0, '10000001-n');
+    });
+    await settle();
+
+    expect(api.transform).toHaveBeenLastCalledWith({
+      text: '吾輩は猫である。',
+      mode: 'gojuon',
+      n: 7,
+      senseOverrides: { '0': '10000001-n' },
+    });
+  });
+
+  it('ルールや N を変えて変換し直しても、指定を保つ', async () => {
+    const { api, result } = await transformed();
+    act(() => {
+      result.current.toggleExclusion(2);
+    });
+    await settle();
+    act(() => {
+      result.current.overrideSense(0, '10000001-n');
+    });
+    await settle();
+
+    act(() => {
+      result.current.setMode('concept');
+      result.current.setN(3);
+    });
+    act(() => {
+      result.current.submit();
+    });
+    await settle();
+
+    expect(api.transform).toHaveBeenLastCalledWith({
+      text: '吾輩は猫である。',
+      mode: 'concept',
+      n: 3,
+      exclusions: [2],
+      senseOverrides: { '0': '10000001-n' },
+    });
+  });
+
+  it('本文を編集したら、指定を消す', async () => {
+    const { api, result } = await transformed();
+    act(() => {
+      result.current.toggleExclusion(0);
+    });
+    await settle();
+
+    act(() => {
+      result.current.setText('吾輩は猫である。名前はまだ無い。');
+    });
+    act(() => {
+      result.current.submit();
+    });
+    await settle();
+
+    expect(result.current.exclusions.size).toBe(0);
+    expect(result.current.senseOverrides).toEqual({});
+    expect(api.transform).toHaveBeenLastCalledWith({
+      text: '吾輩は猫である。名前はまだ無い。',
+      mode: 'gojuon',
+      n: 7,
+    });
+  });
+
+  it('辞書の版が変わったら、指定を消して、指定なしで変換し直す', async () => {
+    const { api, result, settled } = await transformed();
+    act(() => {
+      result.current.toggleExclusion(0);
+    });
+    await settle();
+    expect(result.current.exclusions.size).toBe(1);
+
+    api.transform.mockImplementationOnce((request) => {
+      const response = transformResponse(request.text);
+      return Promise.resolve({
+        ...response,
+        meta: { ...response.meta, dictionaryVersion: '2026.11.0' },
+      });
+    });
+    act(() => {
+      result.current.submit();
+    });
+    await settle();
+
+    // 古い指定で作った結果は使わず、指定なしで1回だけ変換し直す
+    expect(result.current.exclusions.size).toBe(0);
+    expect(api.transform).toHaveBeenLastCalledWith({
+      text: '吾輩は猫である。',
+      mode: 'gojuon',
+      n: 7,
+    });
+    expect(result.current.state.status).toBe('success');
+    const settledOk = settled.filter((s) => s.ok);
+    expect(settledOk.at(-1)?.request).toEqual({ text: '吾輩は猫である。', mode: 'gojuon', n: 7 });
+  });
+
+  it('変換中は指定を変えない(二重送信の防止)', async () => {
+    const { api, result } = await transformed();
+    api.transform.mockImplementationOnce(() => new Promise(() => undefined));
+    act(() => {
+      result.current.submit();
+    });
+    const calls = api.transform.mock.calls.length;
+
+    act(() => {
+      result.current.toggleExclusion(0);
+      result.current.overrideSense(0, '10000001-n');
+    });
+
+    expect(api.transform.mock.calls.length).toBe(calls);
+    expect(result.current.exclusions.size).toBe(0);
+    expect(result.current.senseOverrides).toEqual({});
+  });
+});

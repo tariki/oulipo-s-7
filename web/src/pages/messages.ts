@@ -40,3 +40,18 @@ export function errorMessage(error: DisplayableError): string {
       return '変換に失敗しました。時間をおいてお試しください';
   }
 }
+
+/** 語義の一覧([P1: F8])を取れなかったときの文言。 */
+export function sensesErrorMessage(error: DisplayableError): string {
+  switch (error.code) {
+    case 'LEMMA_NOT_FOUND':
+      return 'この語の語義は辞書にありません';
+    case 'SERVICE_STARTING':
+      return 'サーバーの準備中です。少し待ってから、もう一度読み込んでください';
+    case 'RATE_LIMITED':
+    case 'NETWORK_ERROR':
+      return errorMessage(error);
+    default:
+      return '語義の一覧を取れませんでした。語を選び直してください';
+  }
+}

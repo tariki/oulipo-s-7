@@ -6,6 +6,7 @@ import {
   toEventErrorCode,
   trackEvent,
 } from '../analytics/trackEvent';
+import type { NounSegment, TransformResponse } from '../api/types';
 import { CopyButton } from '../components/CopyButton';
 import { Legend } from '../components/Legend';
 import { ModeSelector } from '../components/ModeSelector';
@@ -16,12 +17,15 @@ import { SiteHeader } from '../components/SiteHeader';
 import { SkipLink } from '../components/SkipLink';
 import { StatusBanner } from '../components/StatusBanner';
 import { TextInput } from '../components/TextInput';
+import type { SensePickerState } from '../components/SensePicker';
 import { TransformButton } from '../components/TransformButton';
+import { WordDetail } from '../components/WordDetail';
 import { useApiClient } from '../hooks/apiClientContext';
+import { type SensesState, useSenses } from '../hooks/useSenses';
 import { type SettledTransform, type TransformState, useTransform } from '../hooks/useTransform';
 import { joinReplaced } from '../segments/joinSegments';
 import { countChars } from '../text/countChars';
-import { errorMessage } from './messages';
+import { errorMessage, sensesErrorMessage } from './messages';
 import styles from './TransformPage.module.css';
 
 const MAX_CHARS = 50_000;
@@ -39,6 +43,9 @@ export function TransformPage() {
   useEffect(() => {
     trackEvent(client, { event: 'page_view', pageViewId });
   }, [client, pageViewId]);
+
+  // [P1] 選んだ語(nounIndex。同じ入力文・同じ辞書の版なら同じ名詞を指す)。変換し直しても選んだままにする
+  const [selection, setSelection] = useState<Selection | null>(null);
 
   const handleSettled = useCallback(
     (settled: SettledTransform) => {
@@ -63,6 +70,8 @@ export function TransformPage() {
           replacedCount: meta.replacedCount,
         });
       } else {
+        // 結果が消えるため、選んだ語も忘れる(次の結果で面が急に開かないように)
+        setSelection(null);
         trackEvent(client, {
           ...common,
           success: false,
@@ -89,6 +98,87 @@ export function TransformPage() {
     trackEvent(client, { event: 'copy', pageViewId, transformSeq: shownSeq });
   }, [client, pageViewId, shownSeq]);
 
+  const detailHeading = useRef<HTMLHeadingElement>(null);
+  const isFocusRequested = useRef(false);
+  // 選べる結果(変換し直している間の直前の結果を含む。本文を編集した後の古い結果は除く)
+  const isSelectable = state.status === 'success' || state.status === 'loading';
+  const detailResult = isSelectable ? result : undefined;
+  // 辞書の版が変わったら、選んだ語は使わない(nounIndex が別の名詞を指しうるため)
+  const selectedIndex =
+    selection !== null && detailResult?.meta.dictionaryVersion === selection.dictionaryVersion
+      ? selection.nounIndex
+      : null;
+  const selected = selectedIndex === null ? undefined : nounSegmentAt(detailResult, selectedIndex);
+  const sensesLemma =
+    selected !== undefined &&
+    detailResult?.meta.mode === 'concept' &&
+    selected.status !== 'excluded' &&
+    selected.lemma !== undefined &&
+    selected.lemma !== null
+      ? selected.lemma
+      : undefined;
+  const { state: senses, retry: retrySenses } = useSenses(
+    sensesLemma,
+    detailResult?.meta.dictionaryVersion ?? '',
+  );
+
+  const { setText: setTransformText } = transform;
+  const handleTextChange = useCallback(
+    (value: string) => {
+      setSelection(null);
+      setTransformText(value);
+    },
+    [setTransformText],
+  );
+
+  // 語を選んだら、面の見出しにフォーカスを移す(同じ語を選び直したときも)
+  // 語を選ぶ関数の参照を変えない(段落を描き直さない)よう、表示中の辞書の版は ref から読む
+  const shownVersion = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    shownVersion.current = result?.meta.dictionaryVersion;
+  }, [result]);
+  const handleSelectToken = useCallback((nounIndex: number) => {
+    const dictionaryVersion = shownVersion.current;
+    if (dictionaryVersion === undefined) {
+      return;
+    }
+    isFocusRequested.current = true;
+    setSelection({ nounIndex, dictionaryVersion });
+    detailHeading.current?.focus();
+  }, []);
+  useEffect(() => {
+    if (isFocusRequested.current && selected !== undefined) {
+      isFocusRequested.current = false;
+      detailHeading.current?.focus();
+    }
+  }, [selected]);
+
+  // 面を閉じたら、選んでいた語にフォーカスを戻す
+  const handleCloseDetail = useCallback(() => {
+    const index = selectedIndex;
+    setSelection(null);
+    if (index !== null) {
+      document
+        .querySelector<HTMLElement>(`#${RESULT_ID} [data-noun-index="${String(index)}"]`)
+        ?.focus();
+    }
+  }, [selectedIndex]);
+
+  const { toggleExclusion, overrideSense } = transform;
+  const handleToggleExclusion = useCallback(() => {
+    if (selectedIndex !== null) {
+      toggleExclusion(selectedIndex);
+    }
+  }, [selectedIndex, toggleExclusion]);
+  const handleSelectSense = useCallback(
+    (synsetId: string) => {
+      if (selectedIndex !== null) {
+        overrideSense(selectedIndex, synsetId);
+      }
+    },
+    [selectedIndex, overrideSense],
+  );
+
   return (
     <div>
       <SkipLink targetId={RESULT_ID} />
@@ -99,7 +189,7 @@ export function TransformPage() {
       </p>
       <main className={styles.main}>
         <Panel title="入力" tone="input">
-          <TextInput value={text} maxChars={MAX_CHARS} onChange={transform.setText} />
+          <TextInput value={text} maxChars={MAX_CHARS} onChange={handleTextChange} />
           <div className={styles.controls}>
             <ModeSelector value={mode} onChange={transform.setMode} />
             <NInput value={n} min={N_MIN} max={N_MAX} onChange={transform.setN} />
@@ -133,16 +223,57 @@ export function TransformPage() {
             id={RESULT_ID}
             result={result}
             isStale={isStale}
+            isSelectable={isSelectable}
             actions={
               isStale ? undefined : (
                 <CopyButton text={joinReplaced(result.segments)} onCopy={handleCopy} />
               )
             }
+            onSelectToken={handleSelectToken}
+          />
+        )}
+        {selected !== undefined && detailResult !== undefined && (
+          <WordDetail
+            segment={selected}
+            mode={detailResult.meta.mode}
+            senses={toPickerState(senses)}
+            overriddenSynsetId={transform.senseOverrides[String(selected.nounIndex)]}
+            isBusy={isLoading}
+            headingRef={detailHeading}
+            onToggleExclusion={handleToggleExclusion}
+            onSelectSense={handleSelectSense}
+            onRetrySenses={retrySenses}
+            onClose={handleCloseDetail}
           />
         )}
       </main>
     </div>
   );
+}
+
+/** 選んだ語。辞書の版も覚える(版が変わると nounIndex が別の名詞を指しうるため)。 */
+interface Selection {
+  nounIndex: number;
+  dictionaryVersion: string;
+}
+
+/** 結果の中の nounIndex の名詞。 */
+function nounSegmentAt(result: TransformResponse | undefined, nounIndex: number) {
+  return result?.segments.find(
+    (segment): segment is NounSegment => segment.type === 'noun' && segment.nounIndex === nounIndex,
+  );
+}
+
+/** 語義の一覧の取得の状態を、表示に要る形にする(取らない語は null)。 */
+function toPickerState(senses: SensesState): SensePickerState | null {
+  switch (senses.status) {
+    case 'idle':
+      return null;
+    case 'error':
+      return { status: 'error', message: sensesErrorMessage(senses.error) };
+    default:
+      return senses;
+  }
 }
 
 /** 表示する結果(成功、変換し直している間の直前の結果、文章を編集した後の古い結果)。 */

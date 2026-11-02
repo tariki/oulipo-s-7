@@ -1,0 +1,87 @@
+.route {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.heading {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.note {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+/* 五十音順: 元の語から変換後の語までを矢印でつなぐ */
+.chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chain li + li::before {
+  content: '→';
+  margin-right: var(--space-2);
+}
+
+.end {
+  font-weight: bold;
+}
+
+.position {
+  font-size: 0.8em;
+  font-weight: normal;
+}
+
+.omitted {
+  font-style: italic;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: 1.5em;
+}
+
+.relation {
+  margin: 0 var(--space-2);
+  font-size: 0.9em;
+}
+
+.concepts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.concepts dt {
+  font-size: 0.85em;
+  font-weight: bold;
+}
+
+.concepts dd {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.concept {
+  font-weight: bold;
+}
+
+.definition {
+  font-size: 0.9em;
+}
+
+.stepDefinition {
+  display: block;
+  font-size: 0.9em;
+}

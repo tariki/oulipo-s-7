@@ -18,7 +18,10 @@ test('文章を変換し、語の説明を見て、結果をコピーできる',
   const token = page.getByRole('button', { name: '獅子、元の語は猫' });
   await expect(token).toBeVisible();
   await token.click();
-  await expect(page.getByRole('note').filter({ hasText: '元の語: 猫' })).toBeVisible();
+  // 選ぶと「選んだ語」の面に元の語の説明が出る(フォーカスが面に移るため、ツールチップは閉じる)
+  await expect(
+    page.getByRole('region', { name: '選んだ語: 猫 → 獅子' }).getByText('元の語: 猫'),
+  ).toBeVisible();
 
   // コピー
   await page.getByRole('button', { name: 'コピー' }).click();

@@ -1,0 +1,71 @@
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-weight: bold;
+}
+
+/* ラジオボタンを左の列に置き、見出し語と定義文を右の列に縦に並べる */
+.option {
+  display: grid;
+  grid-template-columns: var(--touch-target) minmax(0, 1fr);
+  align-items: start;
+  gap: 0 var(--space-2);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-background);
+  border: 1px solid var(--panel-label, var(--color-text));
+  cursor: pointer;
+}
+
+.option input {
+  grid-row: 1 / span 2;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  margin: 0;
+  accent-color: var(--color-band);
+}
+
+.lemmas {
+  font-weight: bold;
+}
+
+.definition {
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.message {
+  margin: 0;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-error);
+}
+
+.failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.retry {
+  min-height: 44px;
+  padding: var(--space-1) var(--space-3);
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-background);
+  border: 1px solid var(--color-text);
+  cursor: pointer;
+}
