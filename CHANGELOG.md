@@ -4,6 +4,10 @@
 
 変換用辞書のバージョン(`2026.10.0` など。変換結果の変化は [辞書バージョンの更新履歴](data/dictionary-history.md))と、Web API のバージョン(`/api/v1`)は、この版とは別に管理します。
 
+まだリリースしていない変更は「未リリース」の節に、プルリクエストごとに書き足します(書き方は開発ガイドライン「CHANGELOG」)。
+
+## [未リリース]
+
 ## [0.2.0] - 2026-11-02
 
 ### 追加
@@ -36,5 +40,6 @@
 - Docker のイメージ(#21)
 - MIT ライセンス(辞書データと依存ライブラリは、それぞれのライセンス)(#20)
 
+[未リリース]: https://github.com/tariki/oulipo-s-7/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/tariki/oulipo-s-7/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/tariki/oulipo-s-7/releases/tag/v0.1.0
