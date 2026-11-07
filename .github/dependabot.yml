@@ -56,8 +56,6 @@ updates:
         dependency-type: development
         update-types: [minor, patch]
 
-  # Dockerfile はまだ無い。作ったら package-ecosystem: docker を足す(docs/repository-structure.md「Dockerfile」)
-
   - package-ecosystem: github-actions
     directory: /
     schedule:
