@@ -8,7 +8,7 @@
 # ベースイメージはタグとダイジェストで固定し、Dependabot で更新する。
 
 # uv のバイナリを渡すだけのステージ(実行用イメージには入れない)
-FROM ghcr.io/astral-sh/uv:0.13.1@sha256:4a1f3666816dafadd20ceb71eac9a7d56d7ef30279f7d64048519ab901ada336 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 AS uv
 
 # --- 1. 画面: web/dist を作る ---
 FROM node:24.22.1-trixie-slim@sha256:89c5244bc22a9bc3287d89ebc7e49b9cb5bb84cd40e6175ac3421d5a9f68b95a AS web
