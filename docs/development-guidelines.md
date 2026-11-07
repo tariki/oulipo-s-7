@@ -836,6 +836,7 @@ Dockerに割り当てるメモリは4GB以上にする(辞書のビルドで使�
 - `postCreateCommand`: `.devcontainer/post-create.sh` を実行する。ShellCheckをaptで入れ、下の手順2を自動で行う
 - `forwardPorts`: `8000`(API)、`5173`(画面)
 - VS Codeの拡張機能: Ruff、ESLint、Prettier、Playwright、ShellCheck
+- VS Codeの設定: ターミナルでの仮想環境の自動の有効化を止める(`python-envs.terminal.autoActivationType`・`python.terminal.activateEnvironment`)。Pythonのツールは `uv run` で動くため要らず、Claude Codeが動いているターミナルに有効化のコマンドが打ち込まれて、依頼として送られるのを防ぐため
 - `hostRequirements.memory`: `4gb`(足りなければ警告を出す)
 
 ### セットアップ手順

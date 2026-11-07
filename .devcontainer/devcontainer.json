@@ -30,7 +30,11 @@
         "esbenp.prettier-vscode",
         "ms-playwright.playwright",
         "timonwong.shellcheck"
-      ]
+      ],
+      "settings": {
+        "python-envs.terminal.autoActivationType": "off",
+        "python.terminal.activateEnvironment": false
+      }
     }
   }
 }
