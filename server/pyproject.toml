@@ -6,7 +6,7 @@ license = "MIT"
 requires-python = ">=3.13,<3.14"
 dependencies = [
   "fastapi>=0.162.0",
-  "pydantic>=2.14",
+  "pydantic>=2.14.2",
   "uvicorn>=0.54",
   # 変換結果が変わるため完全に固定する(docs/architecture.md「依存関係管理」)
   "sudachipy==0.7.0",
