@@ -8,10 +8,10 @@
 # ベースイメージはタグとダイジェストで固定し、Dependabot で更新する。
 
 # uv のバイナリを渡すだけのステージ(実行用イメージには入れない)
-FROM ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.9@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d AS uv
 
 # --- 1. 画面: web/dist を作る ---
-FROM node:24.22.1-trixie-slim@sha256:89c5244bc22a9bc3287d89ebc7e49b9cb5bb84cd40e6175ac3421d5a9f68b95a AS web
+FROM node:24.22.2-trixie-slim@sha256:0820eaa85e07d0490446dd01d14707e17e6108a36988cf374899cd057eb3812d AS web
 WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
